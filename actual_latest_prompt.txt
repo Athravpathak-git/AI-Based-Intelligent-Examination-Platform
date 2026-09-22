@@ -1,0 +1,1264 @@
+<USER_REQUEST>
+
+You are working on my existing project:
+
+**AI-Based Intelligent Examination Platform with Automated Proctoring and Candidate Performance Analysis**
+
+Tech stack:
+- Backend: FastAPI + Python
+- Database: PostgreSQL
+- ORM: SQLAlchemy
+- Migrations: Alembic
+- Frontend: Next.js + React + TypeScript + Tailwind CSS
+- AI: TensorFlow.js / MediaPipe for client-side proctoring
+- AI subjective evaluation: OpenAI GPT-4o or equivalent fallback
+- OCR: Tesseract / suitable OCR service
+
+IMPORTANT:
+I am NOT giving you the original project requirement file. Therefore, the complete Week 4 and Week 5 requirements are written below. You MUST implement according to these requirements.
+
+I already have a working project. DO NOT rebuild the application from scratch.
+
+First inspect the complete existing codebase, database models, APIs, frontend routes, components, tests and current implementation.
+
+Then compare the current implementation against every requirement below.
+
+For every feature:
+- If COMPLETE → preserve it and improve UI/quality only if required.
+- If PARTIAL → complete the missing part.
+- If MISSING → implement it.
+- Do not unnecessarily rewrite working modules.
+- Do not break existing authentication, database, exam generation, question bank, scoring or existing APIs.
+- Preserve existing data and migration history.
+- Use proper database migrations for schema changes.
+- Do not create fake/mock functionality where real functionality is required.
+
+==================================================
+PART 1 — WEEK 4 COMPLETE REQUIREMENTS
+==================================================
+
+## 1. TIMED EXAM SESSION ENGINE
+
+Implement and verify:
+
+- Unique exam session for every attempt.
+- Session must bind:
+  - student_id
+  - exam_id
+  - attempt/session information
+- Generate secure session token.
+- Record server-side start timestamp.
+- Server must calculate remaining time.
+- NEVER trust client-side clock.
+- Respect exam duration.
+- Respect exam start/end window.
+- Automatically submit when:
+  - timer expires
+  - exam window closes
+  - security violation threshold is reached
+- Allow safe resume after temporary browser/network disconnect.
+- Resume must continue from server-authoritative remaining time.
+- Prevent duplicate active sessions for the same student/exam/attempt.
+- Proper session state:
+  - NOT_STARTED
+  - ACTIVE
+  - SUBMITTED
+  - AUTO_SUBMITTED
+  - SUBMITTED_VIOLATION
+  - EXPIRED
+- Timer must stop permanently after final submission.
+
+Existing server-authoritative timer must be preserved.
+
+==================================================
+## 2. ANSWER SUBMISSION & AUTO-SAVE
+==================================================
+
+Support all question types:
+
+- MCQ
+- Multi-select
+- Short answer
+- Long answer
+- Image upload
+
+Implement:
+
+- Real-time/draft answer saving.
+- Auto-save while student progresses.
+- Save selected options immediately.
+- Save text answers.
+- Save image answer references.
+- Mark question for review.
+- Unmark question.
+- Answered/unanswered state.
+- Final submission.
+- Automatic submission on timeout.
+- Prevent duplicate submissions.
+- Prevent changing answers after final submission.
+
+Show a subtle save status in UI:
+
+- Saving...
+- Saved
+- Offline / reconnecting
+- Save failed
+
+Do not expose unnecessary technical API information to students.
+
+==================================================
+## 3. IMAGE ANSWER SYSTEM
+==================================================
+
+For IMAGE_UPLOAD questions implement:
+
+- JPEG
+- PNG
+- WEBP
+- Maximum file size validation
+- Client-side preview
+- Server-side validation
+- Thumbnail generation
+- Secure storage
+- OCR extraction
+- OCR text saved with answer
+- Examiner can view original image
+- Examiner can view thumbnail
+- Examiner can view OCR text
+
+IMPORTANT:
+Add **direct camera capture** using browser MediaDevices API.
+
+Student should be able to choose:
+
+1. Upload image
+2. Capture using camera
+
+Camera flow:
+
+Open camera → show live preview → Capture → Preview → Retake / Use Photo
+
+Do not remove normal file upload.
+
+==================================================
+## 4. OBJECTIVE AUTO-EVALUATION
+==================================================
+
+MCQ:
+
+- Compare submitted option with correct option.
+- Calculate marks.
+- Apply negative marking where configured.
+
+Multi-select:
+
+- Compare selected options against correct options.
+- Support proper multi-select evaluation.
+- Do not expose correct answers before result publication.
+
+Persist:
+
+- per-question marks
+- total marks
+- maximum marks
+- negative marks
+- percentage
+- pass/fail
+- attempt number
+
+Make sure multi-select scoring is implemented correctly instead of leaving it all-or-nothing if the existing exam configuration requires partial scoring.
+
+All scoring must be server-authoritative.
+
+==================================================
+## 5. AI PROCTORING ENGINE
+==================================================
+
+Implement and complete:
+
+### Face Detection
+Use TensorFlow.js + MediaPipe client-side.
+
+Detect:
+
+- Face present
+- Face absent
+- Prolonged face absence
+- Multiple faces
+
+### Gaze Detection
+
+Use facial landmarks / FaceMesh to detect repeated:
+
+- Looking away
+- Off-screen gaze
+
+Do NOT stream raw webcam video to the backend for normal proctoring.
+
+Only derived events/signals should be sent to the backend unless a specific examiner live-monitoring feature requires a separate secure stream.
+
+### Browser Behaviour
+
+Detect:
+
+- Tab switch
+- visibility change
+- window blur
+- window focus
+- fullscreen exit
+
+### Events
+
+Store proctoring events with:
+
+- event type
+- timestamp
+- session
+- severity
+- metadata where appropriate
+
+### Suspicion Score
+
+Maintain server-side suspicion score:
+
+0–100
+
+Example event weights can be retained from the existing implementation:
+
+- TAB_SWITCH
+- FULLSCREEN_EXIT
+- FACE_ABSENT
+- MULTIPLE_FACES
+- OFF_SCREEN_GAZE
+
+Make scoring deterministic and server-authoritative.
+
+### Warning System
+
+Show student-friendly warnings for violations.
+
+Example:
+
+“Please return to the examination screen.”
+
+“Only one face should be visible.”
+
+“Please keep your face visible.”
+
+Do NOT show the internal numeric suspicion score to the student.
+
+Do NOT show the internal proctor event log to the student.
+
+### Auto-submit
+
+When configured violation threshold is exceeded:
+
+- warn appropriately
+- record violation
+- automatically submit exam
+- mark submission reason correctly
+- preserve all answers and events
+
+==================================================
+## 6. WEBSOCKET HEARTBEAT
+==================================================
+
+Current backend WebSocket endpoint exists but frontend currently uses HTTP polling.
+
+Fix this.
+
+Frontend exam attempt must establish a persistent WebSocket connection:
+
+/ws/sessions/{session_id}/heartbeat
+
+Use it for:
+
+- timer synchronization
+- session heartbeat
+- proctoring event synchronization
+- server notifications
+- violation updates where applicable
+- session state
+- auto-submit notifications
+
+Requirements:
+
+- reconnect automatically after temporary network failure
+- avoid duplicate WebSocket connections
+- cleanly close socket after exam submission
+- cleanly close on component unmount
+- handle browser refresh/reconnect safely
+- keep HTTP heartbeat as fallback if WebSocket is temporarily unavailable
+
+Also add missing TensorFlow dependencies formally to frontend/package.json so fresh installations work.
+
+==================================================
+## 7. SUBJECTIVE AI EVALUATION
+==================================================
+
+For:
+
+- Short answer
+- Long answer
+
+Implement:
+
+- Model answer comparison
+- Rubric-based evaluation
+- Suggested marks
+- Justification
+- Matched key points
+- Missed key points
+- AI evaluation record
+
+Use GPT-4o or equivalent when configured.
+
+If API key is unavailable, retain a safe deterministic fallback.
+
+Image-upload handwritten answers:
+
+- OCR
+- Extract readable text
+- Send extracted text to evaluation only where appropriate
+- Keep original image available for examiner review
+
+Examiner must be able to:
+
+- view student answer
+- view AI suggested marks
+- view justification
+- view matched points
+- view missed points
+- edit marks
+- override AI marks
+- add evaluator feedback
+- save final evaluation
+
+AI must NEVER automatically override examiner decisions.
+
+==================================================
+PART 2 — WEEK 5 COMPLETE REQUIREMENTS
+==================================================
+
+## 8. SECURE STUDENT EXAM INTERFACE
+==================================================
+
+Redesign the complete student exam interface.
+
+Required:
+
+- Fullscreen mode
+- Exam title
+- Subject
+- Question number
+- Question navigation
+- Question palette
+- Answered state
+- Unanswered state
+- Marked-for-review state
+- Current question state
+- Previous button
+- Next button
+- Clear answer
+- Mark for review
+- Final submit button
+- Submit confirmation dialog
+
+Question palette should clearly communicate state without using excessive colors.
+
+Timer:
+
+- Normal state
+- Warning at 5 minutes
+- Critical state at 1 minute
+- Final seconds clearly visible
+
+Timer must be based on server time.
+
+==================================================
+## 9. QUESTION UI
+==================================================
+
+MCQ:
+
+Use accessible radio buttons.
+
+Multi-select:
+
+Use accessible checkboxes.
+
+Short answer:
+
+Use compact text input/textarea.
+
+Long answer:
+
+Use large textarea.
+
+Image answer:
+
+- Upload
+- Drag & drop
+- Preview
+- Camera capture
+- Retake
+- Remove
+- Upload progress
+- OCR processing status if applicable
+
+==================================================
+## 10. LIVE WORD COUNTER
+==================================================
+
+Add real-time word counter for:
+
+- Short answer
+- Long answer
+
+Example:
+
+Words: 42 / 150
+
+Also optionally show:
+
+Characters: 236
+
+If maximum word count is configured:
+
+- enforce it
+- prevent exceeding limit
+- show clear validation
+
+Word count must update instantly as user types.
+
+==================================================
+## 11. EXAM SECURITY
+==================================================
+
+During active exam:
+
+Prevent:
+
+- right click
+- copy
+- paste
+- cut
+- unwanted text selection
+- common keyboard shortcuts used for copying content
+
+Monitor:
+
+- tab switch
+- window blur
+- fullscreen exit
+
+Show clear warnings.
+
+Do not make warnings visually frightening or disruptive.
+
+Maintain secure server-side validation as well. Frontend restrictions alone must NOT be treated as security.
+
+==================================================
+## 12. WEBCAM / PROCTORING UI
+==================================================
+
+Exam page must contain a small unobtrusive webcam preview.
+
+Display status such as:
+
+- Camera active
+- Face detected
+- Face not detected
+- Multiple faces detected
+- Monitoring active
+- Camera permission required
+
+Handle:
+
+- camera permission denied
+- camera unavailable
+- device without camera
+- browser camera error
+- reconnect/retry
+
+Warning modal should appear when necessary.
+
+IMPORTANT:
+
+Student must NEVER see:
+
+- internal suspicion score
+- numeric suspicion percentage
+- raw proctor event history
+- examiner-only proctoring information
+- internal fraud/security analysis
+
+Student only sees necessary warnings and monitoring status.
+
+==================================================
+## 13. STUDENT RESULTS DASHBOARD
+==================================================
+
+Create a polished student results experience.
+
+Show:
+
+- Exam name
+- Subject
+- Attempt number
+- Total marks
+- Obtained marks
+- Percentage
+- Pass/Fail
+- Negative marks deducted
+- Question-wise result breakdown
+- Correct
+- Wrong
+- Partial where applicable
+- Examiner feedback
+- Question-level feedback
+- PDF result download
+- Previous attempts/history
+
+IMPORTANT:
+
+Do NOT display:
+
+- suspicion score
+- proctor event log
+- internal AI fraud analysis
+
+Students can see their result and feedback, but internal proctoring/security analytics remain examiner/admin only.
+
+Previous attempts must remain preserved.
+
+==================================================
+## 14. EXAMINER GRADING PORTAL
+==================================================
+
+Examiner portal must provide:
+
+- Candidate list
+- Exam list
+- Question-grouped answers
+- Student answers
+- AI suggested marks
+- AI justification
+- Rubric
+- Matched points
+- Missed points
+- Manual marks
+- AI score override
+- Examiner feedback
+- Image answer viewer
+- OCR text
+- Image annotation tools where practical
+- Bulk grading
+- Save grading
+- Publish result
+- Result publication control
+
+Examiner must only access exams/candidates within their authorized scope.
+
+==================================================
+## 15. RE-ATTEMPT SYSTEM — IMPORTANT
+==================================================
+
+THIS MUST BE CHANGED FROM THE CURRENT IMPLEMENTATION.
+
+Current project allows Admin and Examiner to grant re-attempt directly.
+
+Change the system to the following exact workflow:
+
+### STUDENT
+
+Student must NOT have:
+
+- Request Re-Attempt button
+- Request Re-Attempt page
+- Re-Attempt request form
+- Re-Attempt grant option
+- Any UI that allows student to ask for another attempt
+
+If a completed exam has no approved re-attempt permission:
+
+Simply show:
+
+“Your attempt has been completed. No additional attempt is currently available.”
+
+Do NOT provide a request button.
+
+### EXAMINER
+
+Examiner can:
+
+- Select student
+- Select exam
+- Enter reason
+- Submit re-attempt request
+
+But examiner CANNOT directly grant final access.
+
+Examiner status:
+
+PENDING ADMIN APPROVAL
+
+### ADMIN
+
+Admin can:
+
+- View examiner re-attempt requests
+- View student
+- View exam
+- View previous attempts
+- View examiner reason
+- Approve
+- Reject
+- Revoke an approved permission
+
+Admin can also directly grant a re-attempt when required.
+
+Admin should be able to search/select student by:
+
+- Name
+- Registration number
+- Email where appropriate
+
+### FINAL FLOW
+
+Examiner Request
+        ↓
+Admin Review
+        ↓
+Approve / Reject
+        ↓
+If Approved
+        ↓
+New Attempt Permission
+        ↓
+Student sees exam as available
+        ↓
+Student starts Attempt #2 / #3 / etc.
+
+No old attempt should ever be overwritten.
+
+No old attempt should ever be deleted.
+
+No result should be replaced.
+
+Every attempt must have:
+
+- attempt number
+- separate session
+- separate answers
+- separate result
+- separate timestamps
+
+Example:
+
+Attempt #1 → completed
+Attempt #2 → approved and completed
+Attempt #3 → approved later
+
+All three remain visible in history for authorized Admin/Examiner views.
+
+Students can see their previous attempt results/history where appropriate, but cannot request additional attempts.
+
+Update backend authorization rules, APIs, database logic, frontend pages, tests and UI accordingly.
+
+==================================================
+PART 3 — PWA
+==================================================
+
+Implement Progressive Web App support.
+
+Requirements:
+
+- web app manifest
+- app name
+- short name
+- icons
+- theme color
+- background color
+- installability
+- service worker
+- safe caching strategy
+- offline fallback where safe
+
+IMPORTANT:
+
+Do NOT cache sensitive exam answers, private student data or authenticated API responses insecurely.
+
+Exam submission and timing must always remain server-authoritative.
+
+PWA must not compromise exam security.
+
+==================================================
+PART 4 — MULTILINGUAL SUPPORT
+==================================================
+
+Implement proper multilingual architecture.
+
+Languages:
+
+1. English
+2. Marathi
+3. Hindi
+4. Telugu
+5. Tamil
+6. Malayalam
+7. Kannada
+
+At minimum translate:
+
+- Navbar
+- Login
+- Registration
+- Dashboard
+- Exam instructions
+- Exam controls
+- Question navigation
+- Buttons
+- Warnings
+- Notifications
+- Results labels
+- Profile
+- Admin UI
+- Examiner UI
+- Common validation messages
+
+Do NOT hardcode UI text directly throughout components.
+
+Create a centralized translation system.
+
+Example:
+
+English:
+“Start Exam”
+
+Marathi:
+“परीक्षा सुरू करा”
+
+Hindi:
+“परीक्षा शुरू करें”
+
+Telugu:
+“పరీక్ష ప్రారంభించండి”
+
+Tamil:
+“தேர்வைத் தொடங்கு”
+
+Malayalam:
+“പരീക്ഷ ആരംഭിക്കുക”
+
+Kannada:
+“ಪರೀಕ್ಷೆ ಪ್ರಾರಂಭಿಸಿ”
+
+Language switcher should be attractive and accessible.
+
+Persist selected language.
+
+Ensure Devanagari and South Indian scripts render correctly.
+
+==================================================
+PART 5 — VERCEL FRONTEND
+==================================================
+
+Prepare frontend for Vercel deployment.
+
+Implement:
+
+- production-safe environment variables
+- NEXT_PUBLIC_API_URL
+- production build validation
+- no localhost dependency in production
+- proper API configuration
+- WebSocket production URL support
+- secure CORS configuration
+- PWA compatibility
+
+Create/update:
+
+vercel.json
+
+Only add configuration where actually necessary.
+
+==================================================
+PART 6 — RENDER BACKEND
+==================================================
+
+Prepare FastAPI backend for Render.
+
+Implement:
+
+- production ASGI configuration
+- proper start command
+- environment variable configuration
+- PostgreSQL production connection
+- CORS configuration
+- WebSocket support
+- OCR dependencies where deployment requires them
+- health endpoint
+- production logging
+
+Create:
+
+render.yaml
+
+Create production backend Dockerfile if appropriate.
+
+Do not expose secrets.
+
+Do not commit .env.
+
+==================================================
+PART 7 — FULL UI REDESIGN
+==================================================
+
+THIS IS VERY IMPORTANT.
+
+Do NOT keep the current basic/dull UI.
+
+Redesign the entire application into a premium, modern AI/EdTech examination platform.
+
+### COLOR RESTRICTION
+
+DO NOT use:
+
+- Navy blue
+- Royal blue
+- Blue-heavy palettes
+- Purple
+- Lavender
+- Violet-heavy gradients
+
+The interface should NOT look like a typical blue/purple SaaS dashboard.
+
+### RECOMMENDED VISUAL DIRECTION
+
+Use a warm premium visual system:
+
+Primary:
+- Ivory / warm off-white
+- Deep charcoal
+- Graphite
+
+Accent:
+- Saffron / warm orange
+- Terracotta / coral
+- Soft amber
+- Small muted green accent only where meaningful
+
+Use colors carefully.
+
+The application should look:
+
+- premium
+- intelligent
+- modern
+- clean
+- academic
+- trustworthy
+- AI-powered
+- professional
+- visually impressive
+
+Avoid:
+
+- excessive gradients
+- excessive glassmorphism
+- neon colors
+- childish illustrations
+- over-rounded everything
+- huge empty spaces
+- unnecessary animations
+
+Use:
+
+- strong typography
+- elegant cards
+- subtle shadows
+- clean spacing
+- meaningful icons
+- smooth transitions
+- responsive layouts
+- modern data visualization
+- polished empty states
+- useful hover states
+- consistent buttons
+- clear hierarchy
+
+==================================================
+## 8. REDESIGN THESE PAGES
+==================================================
+
+### Landing Page
+
+Create a premium hero section.
+
+Include:
+
+- AI examination platform branding
+- concise project value proposition
+- Start / Login CTA
+- feature highlights
+- AI proctoring
+- secure examination
+- AI-assisted evaluation
+- analytics
+- multilingual support
+- PWA capability
+
+Do not make it look like a generic template.
+
+### Login
+
+Create a modern role-aware login:
+
+Student
+Examiner
+Admin
+
+Clean split layout or elegant centered layout.
+
+Do not use blue/purple.
+
+### Registration
+
+Modern student registration form.
+
+Organize fields into logical sections.
+
+Show validation clearly.
+
+### Student Dashboard
+
+Show only useful student information:
+
+- upcoming exams
+- active exams
+- completed exams
+- recent results
+- attempt history
+- notifications
+- profile
+
+DO NOT show backend/system diagnostics.
+
+DO NOT show:
+
+FastAPI
+Uvicorn
+PostgreSQL
+Alembic
+localhost
+server health internals
+database health
+security architecture internals
+
+### Examiner Dashboard
+
+Show:
+
+- active exams
+- upcoming exams
+- candidates
+- pending grading
+- pending re-attempt requests
+- published results
+- question bank
+- analytics
+
+### Admin Dashboard
+
+Make it a clean administrative command center.
+
+Show business/product metrics such as:
+
+- total students
+- total examiners
+- active exams
+- completed exams
+- pending approvals
+- re-attempt approvals
+- result publication status
+- recent activity
+
+REMOVE technical/system status cards such as:
+
+“FastAPI Core”
+“Uvicorn”
+“PostgreSQL”
+“Alembic”
+“Database Engine”
+“Server active on 127.0.0.1”
+“Healthy v1.0.0”
+“Security Architecture”
+“Server-Authoritative”
+“Anti-Cheat & Webcam Surveillance Active”
+
+These are developer diagnostics, NOT admin dashboard content.
+
+Keep technical diagnostics only in developer/admin debugging tools if truly required, not on the main dashboard.
+
+==================================================
+## 9. EXAM INTERFACE DESIGN
+==================================================
+
+The exam screen must be the most polished screen.
+
+Suggested layout:
+
+Top:
+Exam title | Section | Server-synced timer
+
+Left:
+Question navigation palette
+
+Center:
+Question + answer area
+
+Right:
+Compact webcam/proctoring status
+
+Bottom:
+Previous | Mark for Review | Next | Submit
+
+Use warm neutral background and high contrast.
+
+The exam UI must remain readable for long sessions.
+
+Avoid visual clutter.
+
+==================================================
+## 10. RESPONSIVE DESIGN
+==================================================
+
+Support:
+
+- Desktop
+- Laptop
+- Tablet
+- Mobile where appropriate
+
+Exam interface should prioritize desktop/tablet because of proctoring and exam usability.
+
+Admin/examiner dashboards must be responsive.
+
+==================================================
+## 11. ACCESSIBILITY
+==================================================
+
+Implement:
+
+- keyboard accessibility
+- proper labels
+- visible focus states
+- sufficient contrast
+- aria labels where needed
+- accessible dialogs
+- accessible buttons
+- accessible form errors
+
+==================================================
+PART 8 — TESTING
+==================================================
+
+After implementation:
+
+Run backend tests.
+
+Existing baseline:
+
+70/70 tests currently pass.
+
+Do not reduce test coverage.
+
+Add/update tests for:
+
+- WebSocket heartbeat
+- proctoring events
+- face absence logic
+- multiple face logic
+- re-attempt approval flow
+- student cannot request re-attempt
+- examiner cannot directly grant re-attempt
+- admin approval
+- attempt #1 preservation
+- attempt #2 creation
+- image camera capture API/flow
+- word count
+- multilingual translations
+- PWA configuration
+- production environment configuration
+
+Run:
+
+pytest
+
+Run frontend:
+
+npx tsc --noEmit
+
+Run:
+
+npm run build
+
+Fix every error.
+
+==================================================
+PART 9 — IMPORTANT SECURITY RULES
+==================================================
+
+Never expose:
+
+- secret keys
+- JWT secrets
+- database passwords
+- OpenAI API keys
+- internal security configuration
+
+Do not commit .env.
+
+Do not expose correct answers to students before results are allowed.
+
+Do not trust client-side timer.
+
+Do not trust client-side scoring.
+
+Do not trust frontend-only security restrictions.
+
+Backend must remain authoritative.
+
+Students must never access:
+
+- admin APIs
+- examiner APIs
+- other students' answers
+- internal proctor events
+- internal suspicion scores
+
+Use RBAC everywhere.
+
+==================================================
+PART 10 — IMPLEMENTATION METHOD
+==================================================
+
+Before modifying anything:
+
+1. Inspect complete repository.
+2. Identify existing implementation.
+3. Create a checklist from this prompt.
+4. Map each requirement to current code.
+5. Preserve working code.
+6. Implement missing/partial features.
+7. Update migrations if database changes are required.
+8. Update APIs.
+9. Update frontend.
+10. Update tests.
+11. Run tests.
+12. Fix errors.
+13. Run production build.
+14. Verify all roles.
+
+Do not stop after making UI changes.
+
+This task is COMPLETE only when the actual functionality works.
+
+==================================================
+FINAL ACCEPTANCE CHECKLIST
+==================================================
+
+The project will be considered complete only if:
+
+[ ] Week 4 timed exam is complete
+[ ] Server-authoritative timer works
+[ ] Auto-submit works
+[ ] Resume works
+[ ] Answer auto-save works
+[ ] Mark-for-review works
+[ ] MCQ evaluation works
+[ ] Multi-select evaluation works
+[ ] Negative marking works
+[ ] Image upload works
+[ ] Image preview works
+[ ] Camera capture works
+[ ] OCR works/falls back safely
+[ ] Face detection works
+[ ] Multiple-face detection works
+[ ] Gaze/off-screen detection works
+[ ] Tab-switch detection works
+[ ] Blur/focus detection works
+[ ] Fullscreen detection works
+[ ] Suspicion score works server-side
+[ ] Student cannot see suspicion score
+[ ] Student cannot see proctor event log
+[ ] Warning system works
+[ ] Violation auto-submit works
+[ ] WebSocket heartbeat works
+[ ] WebSocket reconnect works
+[ ] HTTP fallback works
+[ ] Subjective AI evaluation works
+[ ] Examiner override works
+[ ] Week 5 secure exam UI works
+[ ] Live word counter works
+[ ] Secure copy/paste restrictions work
+[ ] Student results are complete
+[ ] Student result does NOT expose proctoring analytics
+[ ] Examiner grading portal works
+[ ] Examiner can request re-attempt
+[ ] Examiner cannot directly grant re-attempt
+[ ] Admin can approve/reject
+[ ] Admin can directly grant when required
+[ ] Student has NO re-attempt request option
+[ ] Previous attempts are never overwritten
+[ ] Attempt #1/#2/#3 history is preserved
+[ ] PWA works
+[ ] Manifest works
+[ ] Service worker works
+[ ] 7 languages work
+[ ] English works
+[ ] Marathi works
+[ ] Hindi works
+[ ] Telugu works
+[ ] Tamil works
+[ ] Malayalam works
+[ ] Kannada works
+[ ] Vercel configuration works
+[ ] Render configuration works
+[ ] Docker/production configuration is valid
+[ ] Main UI redesigned
+[ ] No navy blue
+[ ] No purple
+[ ] No lavender
+[ ] No blue-heavy SaaS theme
+[ ] Admin technical diagnostics removed from main dashboard
+[ ] Student UI has no re-attempt request
+[ ] Backend tests pass
+[ ] Frontend TypeScript passes
+[ ] Production build passes
+
+FINAL RULE:
+
+Do not simply tell me what should be implemented.
+
+Actually inspect the project and implement the required changes.
+
+At the end provide:
+
+1. What was already complete
+2. What you changed
+3. What files were changed
+4. Database migrations added
+5. APIs added/changed
+6. Frontend pages/components changed
+7. Tests added/updated
+8. Test results
+9. Build result
+10. Any remaining genuine blocker
+
+Do not claim something is complete unless you actually verified it.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-09-21T10:10:44+05:30.
+</ADDITIONAL_METADATA>

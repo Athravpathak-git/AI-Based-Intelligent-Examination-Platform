@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: intelliexam-backend
+    env: python
+    region: oregon
+    plan: standard
+    buildCommand: "pip install -r requirements.txt && alembic upgrade head"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: intelliexam-db
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: "HS256"
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: OPENAI_API_KEY
+        sync: false
+
+databases:
+  - name: intelliexam-db
+    databaseName: ai_exam_db
+    user: intelliexam_user
+    plan: standard
+    region: oregon

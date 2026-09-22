@@ -1,0 +1,1695 @@
+<USER_REQUEST>
+You are the lead full-stack developer and autonomous implementation agent for my project.
+
+# PROJECT
+
+**AI-Based Intelligent Examination Platform with Automated Proctoring and Candidate Performance Analysis**
+
+I have formatted my computer and I am starting this project from a completely NEW EMPTY FOLDER.
+
+The current workspace is the root folder of the project.
+
+Build the project from scratch according to the requirements below.
+
+# CRITICAL INSTRUCTIONS
+
+1. DO NOT only create a plan.
+2. ACTUALLY create all required folders and files in the workspace.
+3. ACTUALLY install required dependencies.
+4. ACTUALLY configure PostgreSQL.
+5. ACTUALLY create the database.
+6. ACTUALLY configure SQLAlchemy.
+7. ACTUALLY configure Alembic.
+8. ACTUALLY implement the backend.
+9. ACTUALLY implement the frontend.
+10. ACTUALLY implement Weeks 1–3 functionality.
+11. ACTUALLY create tests.
+12. ACTUALLY run the tests.
+13. ACTUALLY run the backend.
+14. ACTUALLY run the frontend.
+15. Check for errors and fix them.
+16. After every fix, test again.
+17. Do not stop at the first error.
+18. Do not leave avoidable errors unresolved.
+19. Do not replace required functionality with fake/mock functionality.
+20. Do not use MongoDB anywhere.
+21. Database MUST be PostgreSQL.
+22. Frontend MUST be Next.js + React + TypeScript.
+23. Backend MUST be Python + FastAPI.
+24. Use SQLAlchemy ORM.
+25. Use Alembic migrations.
+26. Use JWT authentication.
+27. Use proper role-based authorization.
+28. Use environment variables for secrets.
+29. NEVER expose passwords, API keys or JWT secrets in source code, README, Git commits or logs.
+30. NEVER ask me to paste my PostgreSQL password into chat.
+31. If a credential is required, read it from local `.env` or let me enter it locally.
+32. Do not implement Weeks 4–8 now.
+33. Build architecture so Weeks 4–8 can be added later without breaking Weeks 1–3.
+34. Do not remove functionality while adding new functionality.
+35. Before modifying an existing file, inspect it first.
+36. Keep the implementation modular and production-style.
+37. Do not unnecessarily ask me questions. Make sensible technical decisions and continue.
+
+# SCOPE
+
+IMPLEMENT ONLY:
+
+**WEEK 1**
+
+* PostgreSQL schema
+* SQLAlchemy
+* Alembic
+* JWT authentication
+* role separation
+
+**WEEK 2**
+
+* Question bank
+* Exam configuration
+* randomized paper generation
+* authentication/security
+* pytest validation
+
+**WEEK 3**
+
+* timed exam session
+* server-side timer
+* answer saving
+* image upload
+* auto evaluation
+* AI subjective grading architecture
+* OCR architecture
+* AI proctoring architecture
+* WebSocket heartbeat
+* suspicion score
+* pytest tests
+* basic Next.js UI required to verify Weeks 1–3
+
+DO NOT implement the full Week 4–8 feature set.
+
+Leave clean extension points for later.
+
+---
+
+# TECH STACK
+
+## FRONTEND
+
+Use:
+
+* Next.js
+* React
+* TypeScript
+* Tailwind CSS
+* TensorFlow.js
+* MediaPipe
+
+Use Next.js App Router.
+
+## BACKEND
+
+Use:
+
+* Python
+* FastAPI
+* SQLAlchemy
+* Alembic
+* PostgreSQL
+* Pydantic
+* python-jose
+* password hashing with bcrypt/passlib or a compatible secure implementation
+* WebSockets
+* APScheduler
+* pytest
+* python-multipart for file uploads
+* psycopg PostgreSQL driver
+
+## AI
+
+Use:
+
+* OpenAI API or equivalent LLM
+* AI subjective grading
+* OCR architecture
+
+The application MUST work without an OpenAI API key.
+
+If `OPENAI_API_KEY` is missing:
+
+* do not crash
+* return a controlled response
+* clearly indicate AI grading is unavailable
+* allow examiner review/override
+
+---
+
+# ENVIRONMENT
+
+Create:
+
+```text
+.env.example
+```
+
+Backend environment variables should include:
+
+```env
+DATABASE_URL=
+JWT_SECRET_KEY=
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+OPENAI_API_KEY=
+```
+
+Frontend environment variables should include:
+
+```env
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
+
+Create local `.env` files only where necessary.
+
+IMPORTANT:
+
+* Never hardcode PostgreSQL password.
+* Never hardcode JWT secret.
+* Never hardcode OpenAI API key.
+* Never print credentials.
+* Never commit `.env`.
+
+PostgreSQL is installed locally.
+
+PostgreSQL version:
+
+**17.x**
+
+PostgreSQL executable:
+
+```text
+C:\Program Files\PostgreSQL\17\bin
+```
+
+PostgreSQL username:
+
+```text
+postgres
+```
+
+Required database:
+
+```text
+ai_exam_db
+```
+
+Use the password configured locally by the user.
+
+DO NOT assume the password is `root`.
+
+DO NOT ask the user to provide the password in chat.
+
+If `.env` is missing, create `.env.example` and provide a safe local setup mechanism.
+
+---
+
+# PROJECT STRUCTURE
+
+Create a clean structure similar to:
+
+```text
+AI_Examination_Platform/
+│
+├── backend/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py
+│   │   │
+│   │   ├── core/
+│   │   │   ├── config.py
+│   │   │   ├── security.py
+│   │   │   └── dependencies.py
+│   │   │
+│   │   ├── db/
+│   │   │   ├── database.py
+│   │   │   └── base.py
+│   │   │
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   ├── routers/
+│   │   ├── services/
+│   │   ├── auth/
+│   │   ├── ai/
+│   │   ├── ocr/
+│   │   ├── proctoring/
+│   │   └── utils/
+│   │
+│   ├── alembic/
+│   ├── tests/
+│   ├── uploads/
+│   ├── requirements.txt
+│   ├── alembic.ini
+│   └── .env.example
+│
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── hooks/
+│   ├── lib/
+│   ├── types/
+│   ├── public/
+│   ├── package.json
+│   └── .env.example
+│
+├── .gitignore
+├── README.md
+└── docker-compose.yml
+```
+
+Docker Compose may be prepared for future use, but local PostgreSQL should be used now.
+
+---
+
+# PHASE 1 — INSPECT EMPTY WORKSPACE
+
+First inspect the current workspace.
+
+Confirm that this is the new project root.
+
+Do not assume files exist.
+
+Then create the project structure.
+
+---
+
+# PHASE 2 — PYTHON BACKEND SETUP
+
+Inside `backend`:
+
+Create a virtual environment:
+
+```text
+.venv
+```
+
+Use the installed Python.
+
+Check:
+
+```text
+python --version
+pip --version
+```
+
+Install compatible dependencies.
+
+Create `requirements.txt`.
+
+Make sure all imports work.
+
+Do not blindly install unnecessary packages.
+
+---
+
+# PHASE 3 — POSTGRESQL SETUP
+
+Verify PostgreSQL is running.
+
+Verify connection using the locally configured credentials.
+
+Create database:
+
+```text
+ai_exam_db
+```
+
+If database already exists, do not destroy it.
+
+Do not drop existing databases.
+
+Verify the database connection using SQLAlchemy.
+
+Create a clear error message if PostgreSQL is not running.
+
+---
+
+# PHASE 4 — DATABASE MODELS
+
+Create SQLAlchemy ORM models for:
+
+## USERS
+
+Fields:
+
+```text
+id
+name
+email
+password_hash
+role
+is_active
+created_at
+```
+
+Roles:
+
+```text
+student
+examiner
+admin
+```
+
+Email must be unique.
+
+Passwords must never be stored in plaintext.
+
+---
+
+## QUESTION_BANK
+
+Fields:
+
+```text
+id
+examiner_id
+subject
+question_text
+question_type
+difficulty
+expected_answer
+model_answer
+marks
+negative_marks
+created_at
+```
+
+Question types:
+
+```text
+MCQ
+multi_select
+short_answer
+long_answer
+image_upload
+```
+
+---
+
+## OPTIONS
+
+Fields:
+
+```text
+id
+question_id
+option_text
+is_correct
+```
+
+Relationships must be correctly configured.
+
+---
+
+## EXAMS
+
+Fields:
+
+```text
+id
+examiner_id
+title
+subject
+duration
+start_time
+end_time
+question_count
+randomization_enabled
+negative_marking_enabled
+proctoring_enabled
+gaze_sensitivity
+max_tab_switch_warnings
+created_at
+```
+
+Also support configuration for question type and difficulty distribution.
+
+---
+
+## EXAM_QUESTIONS
+
+Fields:
+
+```text
+exam_id
+question_id
+order/index
+```
+
+Use a proper column name such as `question_order` if `order` conflicts with SQL syntax.
+
+---
+
+## EXAM_SESSIONS
+
+Fields:
+
+```text
+id
+exam_id
+student_id
+session_token
+started_at
+expires_at
+submitted_at
+status
+suspicion_score
+```
+
+Add appropriate indexes and constraints.
+
+There must be only one active session for the same:
+
+```text
+student_id + exam_id
+```
+
+---
+
+## ANSWERS
+
+Fields:
+
+```text
+id
+session_id
+question_id
+selected_option_ids
+text_answer
+image_path
+marks_awarded
+ai_score
+examiner_score
+ai_justification
+created_at
+updated_at
+```
+
+Use a PostgreSQL-compatible representation for multiple option IDs.
+
+---
+
+## RESULTS
+
+Fields:
+
+```text
+id
+session_id
+total_marks
+obtained_marks
+percentage
+percentile
+feedback
+published
+created_at
+```
+
+---
+
+## PROCTOR_EVENTS
+
+Fields:
+
+```text
+id
+session_id
+event_type
+timestamp
+severity
+suspicion_score
+metadata
+```
+
+Support:
+
+```text
+face_absent
+multiple_faces
+gaze_offscreen
+tab_switch
+window_blur
+window_focus
+heartbeat_missing
+```
+
+Use PostgreSQL JSON/JSONB where appropriate.
+
+---
+
+# PHASE 5 — ALEMBIC
+
+Configure Alembic correctly.
+
+Make sure Alembic imports all SQLAlchemy models.
+
+Create the initial migration.
+
+Run:
+
+```text
+alembic upgrade head
+```
+
+Verify migration succeeds.
+
+Then inspect the actual PostgreSQL database and verify that all required tables exist.
+
+Do NOT merely assume the migration worked.
+
+---
+
+# PHASE 6 — JWT AUTHENTICATION
+
+Implement:
+
+* registration
+* login
+* password hashing
+* JWT access token
+* JWT validation
+* role-based authorization
+* protected routes
+
+JWT must contain appropriate identity/role information.
+
+Implement:
+
+```text
+student
+examiner
+admin
+```
+
+authorization dependencies.
+
+Return:
+
+```text
+401 Unauthorized
+```
+
+for invalid authentication.
+
+Return:
+
+```text
+403 Forbidden
+```
+
+for insufficient role permissions.
+
+---
+
+# STUDENT AUTHENTICATION
+
+Student can:
+
+* register
+* login
+* access allowed exams
+* start an exam
+* save answers
+* submit exam
+* view appropriate result
+
+---
+
+# EXAMINER AUTHENTICATION
+
+Examiner can:
+
+* login
+* create questions
+* update questions
+* delete questions
+* view questions
+* create exams
+* configure exams
+* review subjective answers
+* override AI scores
+
+---
+
+# ADMIN AUTHENTICATION
+
+Admin can:
+
+* login
+* manage users
+* access platform configuration endpoints
+
+Do not allow students to access examiner/admin APIs.
+
+---
+
+# PHASE 7 — QUESTION BANK APIs
+
+Implement CRUD APIs.
+
+Endpoints should cover:
+
+```text
+POST   /api/questions
+GET    /api/questions
+GET    /api/questions/{id}
+PUT    /api/questions/{id}
+DELETE /api/questions/{id}
+```
+
+Only authorized examiners can manage questions.
+
+Validate:
+
+### MCQ
+
+Exactly one correct option.
+
+Reject invalid MCQ with a clear validation error.
+
+### MULTI_SELECT
+
+Allow multiple correct options.
+
+### SHORT/LONG ANSWER
+
+Support:
+
+* expected answer
+* model answer
+* marks
+
+### IMAGE_UPLOAD
+
+Support:
+
+* valid marks
+* expected/model answer where applicable
+
+Support filtering by:
+
+* subject
+* difficulty
+* question type
+
+---
+
+# PHASE 8 — EXAM CONFIGURATION
+
+Implement examiner APIs to create and manage exams.
+
+Support:
+
+* subject
+* duration
+* question count
+* question type distribution
+* difficulty distribution
+* randomization
+* per-student unique paper
+* start time
+* end time
+* negative marking
+* proctoring
+* webcam enable/disable architecture
+* gaze sensitivity
+* max tab-switch warnings
+
+Validate:
+
+* duration > 0
+* question_count > 0
+* start_time < end_time
+* valid question distribution
+* no impossible question configuration
+* negative marks cannot be invalid
+* gaze sensitivity is within an acceptable range
+* tab-switch warning limit is valid
+
+---
+
+# PHASE 9 — RANDOMIZED PAPER GENERATION
+
+Implement a deterministic randomization service.
+
+For the same:
+
+```text
+exam_id
+student_id
+configured question pool
+```
+
+the selected paper must be deterministic.
+
+Different students should receive different papers when randomization is enabled.
+
+Use a secure deterministic seed derived from the exam/student combination.
+
+Do NOT use an uncontrolled global random generator.
+
+Write tests proving:
+
+1. same exam + same student = same paper
+2. same exam + different students = different paper where sufficient question pool exists
+3. selected questions satisfy exam configuration
+
+Store the generated paper/session association so it cannot unexpectedly change after exam start.
+
+---
+
+# PHASE 10 — TIMED EXAM SESSION ENGINE
+
+Implement:
+
+```text
+POST /api/exams/{exam_id}/start
+GET  /api/exam-sessions/{session_id}
+GET  /api/exam-sessions/{session_id}/time
+POST /api/exam-sessions/{session_id}/submit
+```
+
+When student starts:
+
+1. Authenticate student.
+2. Validate exam access window.
+3. Validate exam is available.
+4. Check for existing active session.
+5. Reject duplicate active session.
+6. Generate secure session token.
+7. Bind session to student_id.
+8. Bind session to exam_id.
+9. Store server-side start timestamp.
+10. Calculate server-side expiry timestamp.
+11. Generate the student's paper.
+12. Return necessary session information.
+
+NEVER trust client clock.
+
+Remaining time must be calculated from:
+
+```text
+expires_at - current_server_time
+```
+
+---
+
+# SESSION TOKEN SECURITY
+
+Session token must:
+
+* be cryptographically secure
+* be unique
+* be bound to the session
+* not be reusable for another student
+* not be reusable for another exam
+
+Every protected exam operation must validate session ownership.
+
+---
+
+# APSCHEDULER
+
+Use APScheduler to monitor expired exam sessions.
+
+When session expires:
+
+* mark session submitted/expired
+* evaluate objective answers
+* generate result
+* prevent further answer changes
+
+Make scheduler startup/shutdown safe with FastAPI lifecycle.
+
+Do not create multiple scheduler instances.
+
+---
+
+# PHASE 11 — ANSWER APIs
+
+Implement progressive saving.
+
+Example:
+
+```text
+PUT /api/exam-sessions/{session_id}/answers/{question_id}
+```
+
+Validate:
+
+* session ownership
+* question belongs to student's paper
+* session is active
+* session has not expired
+
+## MCQ
+
+Save selected option.
+
+Validate option belongs to the question.
+
+## MULTI_SELECT
+
+Save selected option IDs.
+
+Validate every option belongs to that question.
+
+## SHORT/LONG
+
+Save text answer.
+
+Validate configured word limits where applicable.
+
+## IMAGE
+
+Implement secure image upload.
+
+Requirements:
+
+* validate extension
+* validate MIME type
+* validate file size
+* generate safe server filename
+* prevent path traversal
+* store outside source code where appropriate
+* generate thumbnail
+* store path in database
+
+Do not execute uploaded files.
+
+---
+
+# PHASE 12 — AUTO EVALUATION
+
+Implement objective evaluation service.
+
+## MCQ
+
+Correct:
+
+```text
+selected_option_id == correct_option_id
+```
+
+Award full marks.
+
+Incorrect answer:
+
+Apply negative marks only when negative marking is enabled.
+
+## MULTI_SELECT
+
+Compare selected option IDs against correct option IDs.
+
+Handle:
+
+* exact match
+* incomplete selection
+* incorrect selection
+
+Define and document a consistent scoring policy.
+
+Store:
+
+```text
+marks_awarded
+```
+
+Calculate:
+
+```text
+total_marks
+obtained_marks
+percentage
+```
+
+Create tests for all scoring cases.
+
+---
+
+# PHASE 13 — SUBJECTIVE AI GRADING
+
+Create a modular AI grading service.
+
+Inputs:
+
+```text
+question
+student_answer
+expected_answer
+model_answer
+maximum_marks
+```
+
+Expected structured result:
+
+```text
+suggested_score
+brief_justification
+matched_key_points
+missed_key_points
+```
+
+AI score is ONLY a suggestion.
+
+Examiner can:
+
+* review
+* edit
+* override score
+
+If OpenAI API key is absent:
+
+* do not crash
+* mark AI grading unavailable
+* keep answer available for examiner
+* allow manual grading
+
+Do not put the API key in source code.
+
+---
+
+# PHASE 14 — OCR ARCHITECTURE
+
+Create a modular OCR service.
+
+Pipeline:
+
+```text
+image upload
+↓
+image preprocessing
+↓
+OCR
+↓
+extracted text
+↓
+examiner review
+```
+
+Design it so Tesseract can be used locally or another provider can be integrated later.
+
+If OCR dependency is unavailable, fail gracefully.
+
+Do not make the whole application unusable because OCR is unavailable.
+
+---
+
+# PHASE 15 — AI PROCTORING
+
+Create the client-side proctoring architecture.
+
+Use:
+
+* TensorFlow.js
+* MediaPipe Face Detection
+* FaceMesh where appropriate
+
+Detect:
+
+1. face present
+2. prolonged face absence
+3. multiple faces
+4. gaze direction
+5. repeated off-screen gaze
+
+Browser events:
+
+```text
+visibilitychange
+blur
+focus
+tab switch
+```
+
+Create a suspicion score:
+
+```text
+0–100
+```
+
+Use a server-side event scoring policy.
+
+Do not blindly trust a client-provided final score.
+
+The backend should:
+
+* validate event type
+* validate session
+* validate ownership
+* normalize severity
+* cap suspicious increments
+* aggregate suspicion score
+* keep score between 0 and 100
+
+Store events in:
+
+```text
+proctor_events
+```
+
+---
+
+# PROCTOR EVENTS
+
+Implement an API for client-derived events.
+
+Validate:
+
+* authenticated session
+* session ownership
+* valid event type
+* valid timestamp format
+* valid severity
+* reasonable payload size
+
+Do not allow arbitrary database updates from the client.
+
+---
+
+# PHASE 16 — WEBSOCKET HEARTBEAT
+
+Create:
+
+```text
+/ws/exam/{session_id}
+```
+
+Client should send heartbeat approximately every 10 seconds.
+
+Backend should:
+
+* authenticate/validate session
+* verify ownership
+* update heartbeat state
+* detect missing heartbeat
+* generate `heartbeat_missing` event when appropriate
+* avoid duplicate event spam
+
+Do not allow heartbeat from an expired/submitted session.
+
+---
+
+# PHASE 17 — FRONTEND
+
+Create a functional Next.js frontend for Weeks 1–3.
+
+Pages:
+
+```text
+/login
+/register
+
+/student
+/exams
+/exams/[id]
+/exam/[sessionId]
+/results/[id]
+
+/examiner
+/examiner/questions
+/examiner/exams
+/examiner/grading
+
+/admin
+```
+
+Use a clean modern responsive UI.
+
+---
+
+# FRONTEND FUNCTIONALITY
+
+## Login
+
+* email
+* password
+* login
+* JWT handling
+* role-based redirect
+
+## Register
+
+* name
+* email
+* password
+* student registration
+
+## Student Dashboard
+
+Show:
+
+* available exams
+* exam status
+* duration
+* start/end window
+* proctoring status
+
+## Examiner Dashboard
+
+Show:
+
+* question count
+* exams
+* grading status
+
+## Question Bank
+
+Functional:
+
+* create
+* edit
+* delete
+* list
+* filter
+
+Support all question types.
+
+## Exam Configuration
+
+Functional form for:
+
+* title
+* subject
+* duration
+* question count
+* randomization
+* negative marking
+* proctoring
+* gaze sensitivity
+* tab-switch limit
+* timing window
+
+## Exam Session
+
+Functional:
+
+* question display
+* navigation
+* MCQ radio buttons
+* multi-select checkboxes
+* text answer
+* image upload
+* progressive save
+* server-based timer
+* submit
+
+## Timer
+
+Timer must use server-provided expiry/remaining time.
+
+Do NOT rely only on:
+
+```text
+setInterval
+```
+
+or client clock.
+
+## Proctoring UI
+
+Show:
+
+* webcam/proctoring status architecture
+* face status
+* warnings
+* suspicion score/status
+* tab switch warning
+
+Implement browser visibility/blur/focus monitoring.
+
+Use TensorFlow.js/MediaPipe architecture without blocking normal development if browser model loading fails.
+
+---
+
+# RESULTS
+
+Create basic result view for:
+
+* total marks
+* obtained marks
+* percentage
+* per-question score where appropriate
+* feedback
+* publication state
+
+---
+
+# PHASE 18 — API DOCUMENTATION
+
+FastAPI Swagger must work:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+Also verify:
+
+```text
+http://127.0.0.1:8000/redoc
+```
+
+Use proper:
+
+* request schemas
+* response schemas
+* status codes
+* error messages
+
+---
+
+# PHASE 19 — TESTING
+
+Create a comprehensive pytest suite.
+
+At minimum:
+
+## AUTH
+
+* registration
+* login
+* invalid password
+* JWT validation
+* student role
+* examiner role
+* admin role
+* unauthorized access
+* forbidden role access
+
+## QUESTION BANK
+
+* valid MCQ
+* MCQ with zero correct answers
+* MCQ with two correct answers
+* multi-select
+* invalid question
+* image upload marks
+* CRUD permissions
+
+## EXAM CONFIG
+
+* valid config
+* invalid duration
+* invalid question count
+* invalid timing window
+* invalid distribution
+* invalid negative marks
+
+## RANDOMIZATION
+
+* same exam/student produces same paper
+* different students produce different paper where possible
+* distribution respected
+
+## SESSION
+
+* start exam
+* session uniqueness
+* student/exam binding
+* invalid session token
+* unauthorized session access
+* expired session
+
+## TIMER
+
+* remaining time calculation
+* expiry
+* auto-submit
+
+## EVALUATION
+
+* correct MCQ
+* incorrect MCQ
+* negative marking
+* multi-select exact match
+* multi-select wrong selection
+* total score
+* percentage
+
+## PROCTORING
+
+* valid event
+* invalid event
+* suspicion score bounds
+* duplicate heartbeat handling
+
+---
+
+# PHASE 20 — ERROR HANDLING
+
+This is extremely important.
+
+After implementation:
+
+Run backend tests.
+
+If ANY error occurs:
+
+1. Read complete traceback.
+2. Identify root cause.
+3. Fix actual cause.
+4. Run the failed test again.
+5. Run complete test suite again.
+6. Continue until stable.
+
+Do not simply suppress errors.
+
+Do not use broad exception handling to hide bugs.
+
+---
+
+# PHASE 21 — BACKEND VERIFICATION
+
+Start FastAPI.
+
+Verify:
+
+```text
+http://127.0.0.1:8000
+```
+
+Create a health endpoint:
+
+```text
+GET /health
+```
+
+It should return a successful response.
+
+Verify:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+Verify database connection.
+
+Verify migrations.
+
+Verify authentication endpoints.
+
+Verify question endpoints.
+
+Verify exam endpoints.
+
+Verify session endpoints.
+
+Verify WebSocket endpoint.
+
+---
+
+# PHASE 22 — FRONTEND VERIFICATION
+
+Start Next.js.
+
+Verify:
+
+```text
+http://localhost:3000
+```
+
+Check for:
+
+* compilation errors
+* TypeScript errors
+* runtime errors
+* broken imports
+* API connection errors
+* hydration errors
+
+Fix all avoidable errors.
+
+Restart frontend after fixes.
+
+---
+
+# PHASE 23 — BUILD VERIFICATION
+
+Run the frontend production/build check.
+
+Run backend import/startup check.
+
+Run pytest.
+
+Make sure there are no avoidable build errors.
+
+---
+
+# PHASE 24 — GIT
+
+Create `.gitignore`.
+
+Must ignore:
+
+```text
+.env
+.env.*
+!.env.example
+
+.venv/
+__pycache__/
+*.pyc
+
+node_modules/
+.next/
+
+uploads/
+*.log
+
+.pytest_cache/
+```
+
+Initialize Git if appropriate.
+
+Do not commit secrets.
+
+---
+
+# PHASE 25 — README
+
+Create a complete README with:
+
+* project overview
+* architecture
+* technology stack
+* folder structure
+* PostgreSQL setup
+* database creation
+* backend setup
+* virtual environment
+* dependency installation
+* Alembic commands
+* frontend setup
+* environment variables
+* how to run backend
+* how to run frontend
+* how to run tests
+* Swagger URL
+* localhost URLs
+* Week 1–3 implemented functionality
+* Week 4–8 intentionally not implemented yet
+
+---
+
+# PHASE 26 — FINAL SELF-CHECK
+
+Before declaring the project complete, perform this checklist.
+
+## DATABASE
+
+[ ] PostgreSQL reachable
+[ ] ai_exam_db exists
+[ ] SQLAlchemy connects
+[ ] Alembic works
+[ ] all required tables exist
+
+## BACKEND
+
+[ ] FastAPI starts
+[ ] /health works
+[ ] Swagger works
+[ ] authentication works
+[ ] roles work
+[ ] question APIs work
+[ ] exam APIs work
+[ ] randomization works
+[ ] exam sessions work
+[ ] server-side timer works
+[ ] answer saving works
+[ ] evaluation works
+[ ] AI grading fails gracefully without API key
+[ ] OCR architecture works/fails gracefully
+[ ] proctoring APIs work
+[ ] WebSocket works
+[ ] APScheduler starts safely
+
+## FRONTEND
+
+[ ] Next.js starts
+[ ] login works
+[ ] register works
+[ ] dashboards load
+[ ] question bank works
+[ ] exam configuration works
+[ ] exam session loads
+[ ] timer works
+[ ] answer saving works
+[ ] submit works
+[ ] result page works
+[ ] proctoring UI works
+[ ] no TypeScript errors
+[ ] no avoidable runtime errors
+
+## TESTS
+
+[ ] pytest runs
+[ ] authentication tests
+[ ] question validation tests
+[ ] exam configuration tests
+[ ] randomization tests
+[ ] session tests
+[ ] timer tests
+[ ] evaluation tests
+[ ] proctoring tests
+
+---
+
+# CRITICAL: DO NOT MOVE TO WEEK 4
+
+STOP implementation at the end of Week 3.
+
+Do NOT implement the following yet unless absolutely required as a dependency:
+
+* advanced examiner grading portal
+* advanced result analytics
+* percentile analytics
+* advanced camera capture
+* advanced webcam snapshot review
+* bulk grading
+* rubric/annotation system
+* load/stress testing
+* Locust/k6
+* Docker production deployment
+* cross-browser testing
+* final documentation/PPT
+* Week 4–8 advanced UI/features
+
+Keep architecture ready for them.
+
+---
+
+# FINAL OUTPUT
+
+After actually implementing and testing everything, provide me with a concise final report.
+
+Include:
+
+## 1. PROJECT LOCATION
+
+Exact workspace path.
+
+## 2. BACKEND
+
+Status:
+
+```text
+RUNNING / NOT RUNNING
+```
+
+## 3. FRONTEND
+
+Status:
+
+```text
+RUNNING / NOT RUNNING
+```
+
+## 4. DATABASE
+
+```text
+ai_exam_db
+```
+
+Confirm connection and migrations.
+
+## 5. TEST RESULTS
+
+Give exact:
+
+```text
+passed
+failed
+skipped
+```
+
+Do not invent numbers.
+
+## 6. ERRORS FIXED
+
+List important errors that occurred and were fixed.
+
+## 7. LOCALHOST
+
+Give exact working URLs.
+
+Backend:
+
+```text
+http://127.0.0.1:8000
+```
+
+Swagger:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+Frontend:
+
+```text
+http://localhost:3000
+```
+
+## 8. RUN COMMANDS
+
+Give the exact commands required to restart the backend and frontend later.
+
+## 9. WEEK 1–3 STATUS
+
+Clearly list what is fully implemented.
+
+## 10. WEEK 4+
+
+Clearly state that Week 4–8 functionality has NOT been implemented yet and the project is ready for the next phase.
+
+# MOST IMPORTANT RULE
+
+I do not want only source code.
+
+I want:
+
+**A TESTED, WORKING LOCALHOST APPLICATION.**
+
+Therefore:
+
+IMPLEMENT → RUN → TEST → FIND ERROR → FIX → TEST AGAIN → VERIFY → GIVE LOCALHOST.
+
+Do not stop merely because files were created.
+
+Do not claim success unless you actually verified it.
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-09-04T20:37:59+05:30.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.8 Flash (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
