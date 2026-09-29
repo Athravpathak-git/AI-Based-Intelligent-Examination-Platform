@@ -17,3 +17,4 @@ email-validator>=2.0.0
 openpyxl>=3.1.5
 pypdf>=6.18.0
 reportlab>=4.2.5
+pytesseract>=0.3.13
