@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, getErrorMessage } from "@/lib/api";
+import { api, getErrorMessage, getBackendOrigin } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useLanguage } from "@/lib/i18n";
 import { getLocalizedQuestionText } from "@/lib/questionTranslations";
@@ -551,7 +551,7 @@ function StudentResultsContent() {
 
                   {/* Handwritten / Uploaded Answer Image */}
                   {(item.thumbnail_path || item.image_path) && (() => {
-                    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+                    const apiBase = getBackendOrigin();
                     const thumbUrl = item.thumbnail_path
                       ? `${apiBase}/${item.thumbnail_path.replace(/\\/g, "/")}`
                       : null;

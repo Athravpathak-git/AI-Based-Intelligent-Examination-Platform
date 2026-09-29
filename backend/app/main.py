@@ -1,3 +1,4 @@
+import os
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -39,7 +40,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS for Next.js frontend
+# Configure CORS for Next.js frontend (local development + Vercel production)
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -47,9 +48,14 @@ origins = [
     "http://127.0.0.1:8000",
 ]
 
+frontend_origin = os.getenv("FRONTEND_URL")
+if frontend_origin:
+    origins.append(frontend_origin.rstrip("/"))
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"^https://.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

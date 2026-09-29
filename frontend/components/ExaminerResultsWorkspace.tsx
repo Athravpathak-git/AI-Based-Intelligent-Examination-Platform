@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, getErrorMessage } from "@/lib/api";
+import { api, getErrorMessage, getBackendOrigin } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n";
 import { Exam, ExamSubmissionResult } from "@/types";
 import { Card, Button, Badge, Alert } from "@/components/UIComponents";
@@ -358,7 +358,7 @@ function ExaminerResultsContent() {
 
             <div className="max-h-[60vh] overflow-y-auto space-y-3.5 pr-1">
               {(reviewingResult.breakdown || []).map((b, idx) => {
-                const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+                const apiBase = getBackendOrigin();
                 const thumbUrl = b.thumbnail_path
                   ? `${apiBase}/${b.thumbnail_path.replace(/\\/g, "/")}`
                   : null;

@@ -13,7 +13,6 @@ import {
   GraduationCap,
   Briefcase,
   Shield,
-  KeyRound,
   CheckCircle2,
   Sparkles,
   Eye,
@@ -24,71 +23,17 @@ import {
 
 type LoginRole = "STUDENT" | "EXAMINER" | "ADMIN";
 
-interface DemoAccount {
-  role: LoginRole;
-  label: string;
-  name: string;
-  email: string;
-  password: string;
-  desc: string;
-  badgeVariant: "emerald" | "indigo" | "gold";
-}
-
-const DEMO_ACCOUNTS: DemoAccount[] = [
-  {
-    role: "STUDENT",
-    label: "Student Portal",
-    name: "Alex Walker",
-    email: "student@exam.com",
-    password: "student123",
-    desc: "Take proctored exams, view scorecards, track performance",
-    badgeVariant: "emerald"
-  },
-  {
-    role: "EXAMINER",
-    label: "Examiner Workspace",
-    name: "Prof. Sarah Jenkins",
-    email: "examiner@exam.com",
-    password: "examiner123",
-    desc: "Manage Question Bank, configure exams, review candidates & scores",
-    badgeVariant: "indigo"
-  },
-  {
-    role: "ADMIN",
-    label: "Institutional Admin",
-    name: "System Administrator",
-    email: "admin@exam.com",
-    password: "admin123",
-    desc: "Platform governance, user management, and system analytics",
-    badgeVariant: "gold"
-  }
-];
-
 export default function LoginPage() {
   const { login } = useAuth();
   const { t } = useLanguage();
   const [selectedRole, setSelectedRole] = useState<LoginRole>("STUDENT");
-  const [email, setEmail] = useState("student@exam.com");
-  const [password, setPassword] = useState("student123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const activeDemo = DEMO_ACCOUNTS.find((a) => a.role === selectedRole)!;
-
   const handleRoleTabChange = (role: LoginRole) => {
     setSelectedRole(role);
-    setError(null);
-    const acc = DEMO_ACCOUNTS.find((a) => a.role === role);
-    if (acc) {
-      setEmail(acc.email);
-      setPassword(acc.password);
-    }
-  };
-
-  const handleQuickFill = (acc: DemoAccount) => {
-    setSelectedRole(acc.role);
-    setEmail(acc.email);
-    setPassword(acc.password);
     setError(null);
   };
 
@@ -232,7 +177,7 @@ export default function LoginPage() {
                   {selectedRole === "STUDENT" ? t("demo_student_desc") : selectedRole === "EXAMINER" ? t("demo_examiner_desc") : t("demo_admin_desc")}
                 </p>
               </div>
-              <Badge variant={activeDemo.badgeVariant}>
+              <Badge variant={selectedRole === "STUDENT" ? "emerald" : selectedRole === "EXAMINER" ? "indigo" : "gold"}>
                 {selectedRole === "ADMIN" ? t("admin") : selectedRole === "EXAMINER" ? t("examiner") : t("student")}
               </Badge>
             </div>
@@ -297,39 +242,8 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* 1-Click Quick-Fill Seeded Credentials */}
-            <div className="pt-2 border-t border-slate-800 space-y-3">
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span className="font-semibold flex items-center gap-1.5 text-indigo-400">
-                  <KeyRound className="h-3.5 w-3.5" />
-                  {t("quick_fill_demo")}
-                </span>
-                <span className="text-[10px] text-slate-500">{t("one_click_test_fill")}</span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                {DEMO_ACCOUNTS.map((acc) => (
-                  <button
-                    key={acc.role}
-                    type="button"
-                    onClick={() => handleQuickFill(acc)}
-                    className={`p-2.5 rounded-xl text-left border transition-all text-xs ${
-                      selectedRole === acc.role
-                        ? "bg-indigo-950/30 border-indigo-500/50 text-indigo-200 ring-1 ring-indigo-500/30"
-                        : "bg-slate-900/60 hover:bg-slate-900 border-slate-800 text-slate-300"
-                    }`}
-                  >
-                    <div className="font-bold text-[11px] truncate text-white">
-                      {acc.role === "STUDENT" ? t("student") : acc.role === "EXAMINER" ? t("examiner") : t("admin")}
-                    </div>
-                    <div className="text-[10px] text-slate-400 truncate mt-0.5">{acc.email}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Student Registration Link */}
-            <div className="text-center text-xs text-slate-400 pt-1 border-t border-slate-800">
+            <div className="text-center text-xs text-slate-400 pt-3 border-t border-slate-800">
               {t("no_account")}{" "}
               <Link href="/register" className="text-indigo-400 font-bold hover:text-indigo-300 hover:underline">
                 {t("register_here")}
