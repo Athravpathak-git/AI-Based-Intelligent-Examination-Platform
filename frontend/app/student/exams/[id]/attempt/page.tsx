@@ -83,6 +83,11 @@ export default function ExamAttemptPage() {
   const [cameraActive, setCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
+  // WebRTC Live Monitoring Refs (for secure examiner surveillance)
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const signalingWsRef = useRef<WebSocket | null>(null);
+  const peerConnectionsRef = useRef<Map<number, RTCPeerConnection>>(new Map());
+
   // Active session and interval refs
   const sessionActiveRef = useRef<boolean>(false);
   const lastViolationTimeRef = useRef<number>(0);
@@ -159,6 +164,7 @@ export default function ExamAttemptPage() {
             video: { width: { ideal: 320 }, height: { ideal: 240 } },
             audio: false,
           });
+          localStreamRef.current = stream;
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
           }
@@ -181,8 +187,131 @@ export default function ExamAttemptPage() {
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
       }
+      localStreamRef.current = null;
     };
   }, [session]);
+
+  // 2b. WebRTC Live Monitoring Candidate Signaling Channel
+  useEffect(() => {
+    if (!session || !cameraActive) return;
+
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) return;
+
+    let isSubscribed = true;
+    let ws: WebSocket | null = null;
+    let pingInterval: NodeJS.Timeout | null = null;
+
+    try {
+      const wsUrl = getWebSocketUrl(`/monitoring/ws/candidate/${session.session_id}?token=${encodeURIComponent(token)}`);
+      ws = new WebSocket(wsUrl);
+      signalingWsRef.current = ws;
+
+      ws.onopen = () => {
+        if (!isSubscribed) return;
+        pingInterval = setInterval(() => {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 15000);
+      };
+
+      ws.onmessage = async (evt) => {
+        try {
+          const data = JSON.parse(evt.data);
+          if (data.type === "stream_requested") {
+            const examinerId = data.examiner_user_id;
+            if (!examinerId) return;
+
+            // Close any existing connection to this examiner
+            const existingPc = peerConnectionsRef.current.get(examinerId);
+            if (existingPc) {
+              existingPc.close();
+            }
+
+            const pc = new RTCPeerConnection({
+              iceServers: [
+                { urls: "stun:stun.l.google.com:19302" },
+                { urls: "stun:stun1.l.google.com:19302" },
+              ],
+            });
+            peerConnectionsRef.current.set(examinerId, pc);
+
+            // Add local video track to peer connection
+            if (localStreamRef.current) {
+              localStreamRef.current.getVideoTracks().forEach((track) => {
+                pc.addTrack(track, localStreamRef.current!);
+              });
+            }
+
+            pc.onicecandidate = (event) => {
+              if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(
+                  JSON.stringify({
+                    type: "ice_candidate",
+                    target_user_id: examinerId,
+                    candidate: event.candidate,
+                  })
+                );
+              }
+            };
+
+            // Create Offer
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(
+                JSON.stringify({
+                  type: "offer",
+                  target_user_id: examinerId,
+                  sdp: offer,
+                })
+              );
+            }
+          } else if (data.type === "answer") {
+            const examinerId = data.examiner_user_id;
+            const pc = peerConnectionsRef.current.get(examinerId);
+            if (pc && data.sdp) {
+              await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            }
+          } else if (data.type === "ice_candidate") {
+            const examinerId = data.examiner_user_id;
+            const pc = peerConnectionsRef.current.get(examinerId);
+            if (pc && data.candidate) {
+              await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+          } else if (data.type === "close_stream") {
+            const examinerId = data.examiner_user_id;
+            const pc = peerConnectionsRef.current.get(examinerId);
+            if (pc) {
+              pc.close();
+              peerConnectionsRef.current.delete(examinerId);
+            }
+          }
+        } catch (e) {
+          console.warn("Signaling message handling error:", e);
+        }
+      };
+
+      ws.onerror = (e) => {
+        console.warn("WebRTC signaling channel error:", e);
+      };
+    } catch (err) {
+      console.warn("Failed to connect candidate live monitoring signaling:", err);
+    }
+
+    return () => {
+      isSubscribed = false;
+      if (pingInterval) clearInterval(pingInterval);
+      peerConnectionsRef.current.forEach((pc) => pc.close());
+      peerConnectionsRef.current.clear();
+      if (ws) {
+        ws.close();
+      }
+      signalingWsRef.current = null;
+    };
+  }, [session, cameraActive]);
 
   // 3. User Enters Fullscreen Mode
   const handleEnterFullscreenAndBegin = async () => {
@@ -268,6 +397,16 @@ export default function ExamAttemptPage() {
 
   const stopWebcamTracks = useCallback(() => {
     try {
+      peerConnectionsRef.current.forEach((pc) => pc.close());
+      peerConnectionsRef.current.clear();
+      if (signalingWsRef.current) {
+        signalingWsRef.current.close();
+        signalingWsRef.current = null;
+      }
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((t) => t.stop());
+        localStreamRef.current = null;
+      }
       if (videoRef.current?.srcObject) {
         (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
         videoRef.current.srcObject = null;
@@ -284,6 +423,20 @@ export default function ExamAttemptPage() {
   const logSecurityViolation = useCallback(
     async (eventType: "TAB_SWITCH" | "WINDOW_BLUR" | "FULLSCREEN_EXIT" | "FACE_ABSENT" | "MULTIPLE_FACES_DETECTED" | "OFF_SCREEN_GAZE" | string) => {
       if (!sessionActiveRef.current || !session) return;
+
+      // Broadcast real-time proctor update to live monitoring channel
+      try {
+        if (signalingWsRef.current && signalingWsRef.current.readyState === WebSocket.OPEN) {
+          signalingWsRef.current.send(
+            JSON.stringify({
+              type: "proctor_status",
+              face_detected: eventType !== "FACE_ABSENT",
+              multiple_faces: eventType === "MULTIPLE_FACES_DETECTED" || eventType === "MULTIPLE_FACES",
+              tab_switch_count: tabWarnings + (eventType === "TAB_SWITCH" ? 1 : 0),
+            })
+          );
+        }
+      } catch (e) {}
 
       // Debounce violations within 1.5 seconds so same event doesn't fire duplicate
       const now = Date.now();

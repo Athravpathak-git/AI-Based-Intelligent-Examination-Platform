@@ -84,8 +84,9 @@ app.include_router(subjects_router, prefix=settings.API_V1_STR)
 app.include_router(notifications_router, prefix=settings.API_V1_STR)
 app.include_router(evaluations_router, prefix=settings.API_V1_STR)
 app.include_router(monitoring_router, prefix=settings.API_V1_STR)
-# Allow WebSocket endpoints at root level (/ws/sessions/{id}/heartbeat)
+# Allow WebSocket endpoints at root level (/ws/sessions/{id}/heartbeat, /monitoring/ws/...)
 app.include_router(sessions_router)
+app.include_router(monitoring_router)
 
 # Static file serving for answer uploads and thumbnails
 from pathlib import Path

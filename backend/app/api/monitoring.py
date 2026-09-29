@@ -1,15 +1,21 @@
+import logging
 from datetime import datetime, timezone, timedelta
-from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from typing import List, Optional, Dict, Any, Set
+from fastapi import APIRouter, Depends, HTTPException, Query, status, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, ConfigDict
 
 from app.core.dependencies import get_db, require_examiner_or_admin
+from app.core.security import decode_access_token
+from app.db.database import SessionLocal
 from app.models.user import User, UserRole
 from app.models.exam import Exam
 from app.models.session import ExamSession, Answer
 from app.models.proctor import ProctorEvent
 from app.services.session_service import ensure_utc, SUSPICION_WEIGHTS
+from app.services.monitoring_signaling import signaling_manager
+
+logger = logging.getLogger("monitoring")
 
 router = APIRouter(prefix="/monitoring", tags=["Live Monitoring"])
 
@@ -40,6 +46,7 @@ class LiveCandidateSessionItem(BaseModel):
     suspicion_score: float
     last_heartbeat_at: Optional[datetime] = None
     latest_event: Optional[Dict[str, Any]] = None
+    is_streaming_live: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -203,7 +210,8 @@ def get_live_monitoring(
             total_violations=total_session_violations,
             suspicion_score=score,
             last_heartbeat_at=last_heartbeat,
-            latest_event=latest_event_dict
+            latest_event=latest_event_dict,
+            is_streaming_live=sess.id in signaling_manager.candidates
         )
         session_items.append(item)
 
@@ -312,7 +320,8 @@ def get_session_monitoring_detail(
         total_violations=total_violations,
         suspicion_score=score,
         last_heartbeat_at=events[0].created_at if events else None,
-        latest_event=formatted_events[0] if formatted_events else None
+        latest_event=formatted_events[0] if formatted_events else None,
+        is_streaming_live=sess.id in signaling_manager.candidates
     )
 
     return LiveSessionDetailResponse(
@@ -320,3 +329,223 @@ def get_session_monitoring_detail(
         events=formatted_events,
         answers_count=len(answers)
     )
+
+# ---------------------------------------------------------------------------
+# Real-Time WebRTC Video Signaling & Monitoring Telemetry WebSockets
+# ---------------------------------------------------------------------------
+
+@router.websocket("/ws/candidate/{session_id}")
+async def websocket_candidate_monitoring(
+    websocket: WebSocket,
+    session_id: int,
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Candidate WebRTC signaling channel:
+    - Candidate publishes their live webcam stream tracks to requesting examiners/admins.
+    - Strictly prevents the candidate from subscribing to or viewing other candidates' streams.
+    - Emits real-time proctoring telemetry updates (face detection, camera status).
+    """
+    # Fallback to query parameter or first-frame auth
+    auth_token = token
+    if not auth_token:
+        # Check subprotocols or headers
+        auth_header = websocket.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            auth_token = auth_header.split(" ")[1]
+
+    if not auth_token:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    try:
+        payload = decode_access_token(auth_token)
+        user_id = payload.get("sub")
+        if not user_id:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+    except Exception:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    user = db.query(User).filter(User.id == int(user_id)).first()
+    if not user or not user.is_active or user.role != UserRole.STUDENT:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    session = db.query(ExamSession).filter(ExamSession.id == session_id).first()
+    if not session or session.student_id != user.id or session.status != "ACTIVE":
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    exam_id = session.exam_id
+    student_name = user.name
+
+    await websocket.accept()
+    conn = await signaling_manager.register_candidate(
+        session_id=session_id,
+        student_id=int(user_id),
+        student_name=student_name,
+        exam_id=exam_id,
+        websocket=websocket
+    )
+
+    try:
+        while True:
+            msg = await websocket.receive_json()
+            mtype = msg.get("type")
+
+            if mtype == "ping":
+                await websocket.send_json({"type": "pong"})
+
+            elif mtype == "camera_status":
+                active = bool(msg.get("active", True))
+                conn.camera_active = active
+                await signaling_manager.broadcast_candidate_status(
+                    session_id=session_id,
+                    status_type="CANDIDATE_CAMERA_UPDATE",
+                    data={"session_id": session_id, "camera_active": active}
+                )
+
+            elif mtype == "proctor_status":
+                face_detected = bool(msg.get("face_detected", True))
+                multiple_faces = bool(msg.get("multiple_faces", False))
+                conn.face_detected = face_detected
+                conn.multiple_faces = multiple_faces
+                await signaling_manager.broadcast_candidate_status(
+                    session_id=session_id,
+                    status_type="CANDIDATE_PROCTOR_UPDATE",
+                    data={
+                        "session_id": session_id,
+                        "face_detected": face_detected,
+                        "multiple_faces": multiple_faces,
+                        "tab_switch_count": msg.get("tab_switch_count"),
+                        "total_violations": msg.get("total_violations")
+                    }
+                )
+
+            elif mtype in ["offer", "answer", "ice_candidate"]:
+                target_user_id = msg.get("target_user_id")
+                if target_user_id:
+                    forward_msg = {
+                        "type": mtype,
+                        "session_id": session_id,
+                        "sdp": msg.get("sdp"),
+                        "candidate": msg.get("candidate")
+                    }
+                    await signaling_manager.send_to_examiner(int(target_user_id), forward_msg)
+
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.warning(f"Candidate websocket connection closed for session {session_id}: {e}")
+    finally:
+        await signaling_manager.disconnect_candidate(session_id)
+
+
+@router.websocket("/ws/examiner")
+async def websocket_examiner_monitoring(
+    websocket: WebSocket,
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Examiner/Admin WebRTC monitoring channel:
+    - Receives live telemetry events for active candidates.
+    - Initiates WebRTC live video streams for candidates in the monitoring grid.
+    - Strictly enforces RBAC: Examiner only sees their own exams; Admin sees all exams.
+    """
+    auth_token = token
+    if not auth_token:
+        auth_header = websocket.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            auth_token = auth_header.split(" ")[1]
+
+    if not auth_token:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    try:
+        payload = decode_access_token(auth_token)
+        user_id = payload.get("sub")
+        if not user_id:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+    except Exception:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    user = db.query(User).filter(User.id == int(user_id)).first()
+    if not user or not user.is_active or user.role not in [UserRole.EXAMINER, UserRole.ADMIN]:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    user_role = user.role.value
+    user_name = user.name
+    created_exam_ids: Optional[Set[int]] = None
+    if user.role == UserRole.EXAMINER:
+        created_exams = db.query(Exam.id).filter(Exam.created_by == user.id).all()
+        created_exam_ids = {e[0] for e in created_exams}
+
+    await websocket.accept()
+    await signaling_manager.register_examiner(
+        user_id=int(user_id),
+        user_name=user_name,
+        role=user_role,
+        created_exam_ids=created_exam_ids,
+        websocket=websocket
+    )
+
+    try:
+        while True:
+            msg = await websocket.receive_json()
+            mtype = msg.get("type")
+
+            if mtype == "ping":
+                await websocket.send_json({"type": "pong"})
+
+            elif mtype == "request_stream":
+                session_id = msg.get("session_id")
+                if session_id:
+                    cand = signaling_manager.candidates.get(int(session_id))
+                    if cand:
+                        if user_role == "ADMIN" or (created_exam_ids is not None and cand.exam_id in created_exam_ids):
+                            await signaling_manager.send_to_candidate(int(session_id), {
+                                "type": "stream_requested",
+                                "examiner_user_id": int(user_id),
+                                "examiner_name": user_name
+                            })
+                        else:
+                            await websocket.send_json({
+                                "type": "ERROR",
+                                "message": "Unauthorized to view stream for this exam session."
+                            })
+                    else:
+                        await websocket.send_json({
+                            "type": "CANDIDATE_OFFLINE",
+                            "session_id": session_id
+                        })
+
+            elif mtype in ["offer", "answer", "ice_candidate", "close_stream"]:
+                session_id = msg.get("session_id")
+                if session_id:
+                    cand = signaling_manager.candidates.get(int(session_id))
+                    if cand:
+                        if user_role == "ADMIN" or (created_exam_ids is not None and cand.exam_id in created_exam_ids):
+                            forward_msg = {
+                                "type": mtype,
+                                "examiner_user_id": int(user_id),
+                                "examiner_name": user_name,
+                                "sdp": msg.get("sdp"),
+                                "candidate": msg.get("candidate")
+                            }
+                            await signaling_manager.send_to_candidate(int(session_id), forward_msg)
+
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.warning(f"Examiner websocket closed for user {user_id}: {e}")
+    finally:
+        await signaling_manager.disconnect_examiner(int(user_id))
+
