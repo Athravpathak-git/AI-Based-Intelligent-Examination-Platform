@@ -2,10 +2,12 @@
   "name": "IntelliExamAI - Intelligent Examination Platform",
   "short_name": "IntelliExamAI",
   "description": "AI-Based Intelligent Examination Platform with Automated Proctoring and Candidate Performance Analysis",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#FAF8F5",
-  "theme_color": "#1C1C1F",
+  "background_color": "#F4F1E8",
+  "theme_color": "#141414",
   "orientation": "portrait-primary",
   "icons": [
     {

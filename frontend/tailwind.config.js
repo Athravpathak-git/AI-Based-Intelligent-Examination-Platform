@@ -8,84 +8,119 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Modern AI + EdTech Palette
-        saffron: {
-          DEFAULT: "#E06A26", // Warm Orange / Saffron
-          dark: "#C95716",
-          light: "#FAD9C5",
-          subtle: "#FEF3EC",
+        // Master AI SaaS Deep Obsidian & Midnight Slate Palette
+        obsidian: {
+          DEFAULT: "#080C14", // Canvas background
+          deep: "#05080E",
+          card: "#0D1322",   // Secondary panel
+          surface: "#131B2E", // Elevated card surface
+          elevated: "#182238",
+          border: "#1E293B",  // Hairline border
+          muted: "#334155",
         },
-        terracotta: {
-          DEFAULT: "#C85332", // Secondary Accent Terracotta
-          dark: "#B04426",
-          light: "#F8DDD5",
+        electric: {
+          indigo: "#6366F1",
+          violet: "#8B5CF6",
+          cyan: "#06B6D4",
+          emerald: "#10B981",
+          amber: "#F59E0B",
+          rose: "#EF4444",
         },
-        charcoal: {
-          DEFAULT: "#1C1C1F", // Deep Charcoal
-          dark: "#171719",
-          surface: "#242428",
-          muted: "#6B6B76",
-          border: "#EAE6DF",
+        // Premium Graphite + Metallic Gold (Enhanced for Dark Mode)
+        gold: {
+          DEFAULT: "#EAB308", // Luminous Gold
+          dark: "#CA8A04",
+          light: "#FDE047",
+          subtle: "rgba(234, 179, 8, 0.1)",
+          border: "rgba(234, 179, 8, 0.25)",
         },
         graphite: {
-          DEFAULT: "#171719", // Graphite Surfaces & Sidebar
-          dark: "#111112",
-          surface: "#1E1E22",
-          hover: "#25252A",
-          active: "#2C2C32",
-          border: "#2F2F36",
+          DEFAULT: "#090D16", // Primary Surface
+          dark: "#05080E",
+          surface: "#0F172A", // Dark Surface / Console Panel
+          panel: "#131B2E",
+          hover: "#1E293B",
+          active: "#334155",
+          border: "#1E293B",
+          muted: "#64748B",
         },
         ivory: {
-          DEFAULT: "#FAF8F5", // Warm Ivory Background
-          dark: "#F0ECE3",
-          card: "#FFFFFF",
-          subtle: "#F5F1E8",
-          border: "#DFD9CF",
+          DEFAULT: "#080C14", // Re-mapped for dark SaaS consistency
+          dark: "#05080E",
+          card: "#0F172A",    // Card surface
+          subtle: "#131B2E",
+          border: "#1E293B",  // Thin hairline border
         },
-        // System Statuses (Muted Green, Soft Amber, Rose)
+        charcoal: {
+          DEFAULT: "#F8FAFC", // Primary Text in Dark Mode
+          dark: "#0B0F19",
+          surface: "#0F172A",
+          muted: "#94A3B8",   // Secondary Text
+          border: "#1E293B",
+        },
+        // System Statuses
         status: {
-          success: "#2B7853",
-          "success-bg": "#EFF7F2",
-          "success-border": "#C4DFD3",
-          warning: "#D97706",
-          "warning-bg": "#FEF7EC",
-          "warning-border": "#FDE68A",
-          danger: "#A6404D",
-          "danger-bg": "#FAEFF1",
-          "danger-border": "#ECCFD4",
+          success: "#10B981",
+          "success-bg": "rgba(16, 185, 129, 0.1)",
+          "success-border": "rgba(16, 185, 129, 0.3)",
+          warning: "#F59E0B",
+          "warning-bg": "rgba(245, 158, 11, 0.1)",
+          "warning-border": "rgba(245, 158, 11, 0.3)",
+          danger: "#EF4444",
+          "danger-bg": "rgba(239, 68, 68, 0.1)",
+          "danger-border": "rgba(239, 68, 68, 0.3)",
         },
-        // Legacy Aliases Redirected to Saffron/Terracotta to Prevent Any Old Burgundy
+        // Seamless aliases to prevent breaking legacy references
+        saffron: {
+          DEFAULT: "#F59E0B",
+          dark: "#D97706",
+          light: "#FCD34D",
+          subtle: "rgba(245, 158, 11, 0.1)",
+        },
+        terracotta: {
+          DEFAULT: "#0F172A",
+          dark: "#080C14",
+          light: "#1E293B",
+        },
         burgundy: {
-          DEFAULT: "#E06A26",
-          deep: "#C95716",
-          rose: "#C85332",
-          subtle: "#FEF3EC",
-          border: "#FAD9C5",
-          hover: "#C95716",
-          active: "#B04426",
+          DEFAULT: "#6366F1",
+          deep: "#4F46E5",
+          rose: "#818CF8",
+          subtle: "rgba(99, 102, 241, 0.1)",
+          border: "rgba(99, 102, 241, 0.3)",
+          hover: "#4F46E5",
+          active: "#080C14",
         },
         champagne: {
-          DEFAULT: "#E06A26",
-          light: "#FEF3EC",
-          dark: "#C95716",
-          subtle: "#FAF8F5",
-          border: "#EAE6DF",
-          hover: "#C95716",
+          DEFAULT: "#EAB308",
+          light: "#FEF08A",
+          dark: "#CA8A04",
+          subtle: "rgba(234, 179, 8, 0.1)",
+          border: "rgba(234, 179, 8, 0.25)",
+          hover: "#CA8A04",
         },
       },
       boxShadow: {
-        card: "0 1px 3px 0 rgba(28, 28, 31, 0.05), 0 1px 2px -1px rgba(28, 28, 31, 0.03)",
-        "card-hover": "0 10px 22px -4px rgba(28, 28, 31, 0.08), 0 4px 8px -2px rgba(28, 28, 31, 0.04)",
-        dropdown: "0 12px 28px -6px rgba(23, 23, 25, 0.18), 0 4px 12px -2px rgba(23, 23, 25, 0.08)",
-        saffron: "0 4px 14px 0 rgba(224, 106, 38, 0.25)",
-        burgundy: "0 4px 14px 0 rgba(224, 106, 38, 0.25)",
-        champagne: "0 4px 14px 0 rgba(224, 106, 38, 0.20)",
+        card: "0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.2)",
+        "card-hover": "0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4)",
+        dropdown: "0 20px 35px -10px rgba(0, 0, 0, 0.7), 0 8px 16px -4px rgba(0, 0, 0, 0.5)",
+        gold: "0 0 25px -5px rgba(234, 179, 8, 0.25)",
+        indigo: "0 0 25px -5px rgba(99, 102, 241, 0.3)",
+        cyan: "0 0 25px -5px rgba(6, 182, 212, 0.3)",
+        emerald: "0 0 25px -5px rgba(16, 185, 129, 0.25)",
+        rose: "0 0 25px -5px rgba(239, 68, 68, 0.25)",
+        glow: "0 0 40px -10px rgba(99, 102, 241, 0.3)",
+        graphite: "0 4px 14px 0 rgba(0, 0, 0, 0.5)",
+        saffron: "0 0 25px -5px rgba(245, 158, 11, 0.25)",
+        burgundy: "0 0 25px -5px rgba(99, 102, 241, 0.3)",
+        champagne: "0 0 25px -5px rgba(234, 179, 8, 0.2)",
       },
       animation: {
         "fade-in-up": "fadeInUp 0.35s ease-out forwards",
         "fade-in": "fadeIn 0.25s ease-out forwards",
         "pulse-subtle": "pulseSubtle 2.5s ease-in-out infinite",
         "shimmer": "shimmer 2.5s infinite linear",
+        "glow-pulse": "glowPulse 3s ease-in-out infinite",
       },
       keyframes: {
         fadeInUp: {
@@ -99,6 +134,10 @@ module.exports = {
         pulseSubtle: {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.75" },
+        },
+        glowPulse: {
+          "0%, 100%": { opacity: "0.4", transform: "scale(1)" },
+          "50%": { opacity: "0.8", transform: "scale(1.05)" },
         },
         shimmer: {
           "0%": { backgroundPosition: "-200% 0" },

@@ -4,7 +4,8 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api, getErrorMessage, getWebSocketUrl } from "@/lib/api";
-import { useLanguage } from "@/lib/i18n";
+import { useLanguage, LanguageSwitcher } from "@/lib/i18n";
+import { getLocalizedQuestionText, getLocalizedOptionText, getWrittenPromptLabels } from "@/lib/questionTranslations";
 import { StudentQuestion, ExamSession } from "@/types";
 import { Badge, Button, Alert } from "@/components/UIComponents";
 import {
@@ -47,7 +48,7 @@ export default function ExamAttemptPage() {
   const router = useRouter();
   const examId = params.id as string;
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   // Session & Questions State
   const [session, setSession] = useState<ExamSession | null>(null);
@@ -903,8 +904,8 @@ export default function ExamAttemptPage() {
   // 8. Loading State
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#18181B] text-white space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#E06A26]"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#141414] text-white space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C5A04A]"></div>
         <p className="text-sm font-semibold tracking-wide text-stone-300">
           Initializing Authoritative Examination Session from Server...
         </p>
@@ -919,19 +920,19 @@ export default function ExamAttemptPage() {
       errorMessage.toLowerCase().includes("previous attempt");
 
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-[#18181B]">
-        <div className="max-w-md w-full bg-[#242429] p-8 rounded-3xl shadow-2xl border border-[#3F3F46] text-center space-y-5">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#141414]">
+        <div className="max-w-md w-full bg-[#202020] p-8 rounded-3xl shadow-2xl border border-[#333333] text-center space-y-5">
           <div className={`p-3.5 rounded-2xl w-fit mx-auto border ${
             isReattemptRequired
-              ? "bg-[#E06A26]/10 text-[#E06A26] border-[#E06A26]/30"
-              : "bg-red-500/10 text-red-400 border-red-500/20"
+              ? "bg-[#C5A04A]/10 text-[#C5A04A] border-[#C5A04A]/30"
+              : "bg-[#B8544F]/10 text-[#B8544F] border-[#B8544F]/20"
           }`}>
-            {isReattemptRequired ? <ShieldAlert className="h-10 w-10 text-[#E06A26]" /> : <XCircle className="h-10 w-10 text-red-400" />}
+            {isReattemptRequired ? <ShieldAlert className="h-10 w-10 text-[#C5A04A]" /> : <XCircle className="h-10 w-10 text-[#B8544F]" />}
           </div>
           <h2 className="text-xl font-bold text-white">
             {isReattemptRequired ? "Examination Completed" : "Access Prohibited"}
           </h2>
-          <p className="text-xs text-stone-300 leading-relaxed bg-[#18181B] p-4 rounded-xl border border-[#3F3F46]">
+          <p className="text-xs text-stone-300 leading-relaxed bg-[#141414] p-4 rounded-xl border border-[#333333]">
             {isReattemptRequired
               ? "Your attempt has been completed. No additional attempt is currently available."
               : errorMessage}
@@ -942,7 +943,7 @@ export default function ExamAttemptPage() {
               <Button
                 variant="outline"
                 onClick={() => router.push(`/student/results?exam_id=${examId}`)}
-                className="w-full text-xs py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-750"
+                className="w-full text-xs py-2.5 bg-[#141414] hover:bg-[#282828] text-[#F4F1E8] border-[#333333]"
               >
                 View Scorecard & Assessment Review
               </Button>
@@ -950,7 +951,7 @@ export default function ExamAttemptPage() {
             <Button
               variant="primary"
               onClick={() => router.push("/student")}
-              className="w-full text-xs py-2.5 bg-[#E06A26] hover:bg-[#C95716] text-white font-bold border-0 shadow-md"
+              className="w-full text-xs py-2.5 bg-[#C5A04A] hover:bg-[#D4AF37] text-[#141414] font-bold border-0 shadow-md"
             >
               Return to Student Dashboard
             </Button>
@@ -963,50 +964,53 @@ export default function ExamAttemptPage() {
   // 10. Pre-Flight Fullscreen Entrance Overlay
   if (!hasEnteredFullscreen) {
     return (
-      <div className="min-h-screen bg-[#1C1C1F] text-white flex items-center justify-center p-6">
-        <div className="max-w-xl w-full bg-[#242428] border border-[#2F2F36] rounded-3xl p-8 space-y-6 shadow-2xl">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-[#E06A26] text-white rounded-2xl border border-[#C95716] shadow-md">
-              <Shield className="h-7 w-7" />
+      <div className="min-h-screen bg-[#141414] text-white flex items-center justify-center p-6">
+        <div className="max-w-xl w-full bg-[#202020] border border-[#333333] rounded-3xl p-8 space-y-6 shadow-2xl">
+          <div className="flex items-center justify-between gap-3.5">
+            <div className="flex items-center gap-3.5">
+              <div className="p-3 bg-[#C5A04A] text-[#141414] rounded-2xl border border-[#C5A04A]/40 shadow-md">
+                <Shield className="h-7 w-7 text-[#141414]" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white tracking-tight">{t("proctoring_lock_title")}</h1>
+                <p className="text-xs text-[#D4AF37]/90 text-stone-300">{t("proctoring_lock_desc")}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">Proctored Examination Lock</h1>
-              <p className="text-xs text-[#FAF8F5]/70">Institutional Security & Fullscreen Verification</p>
-            </div>
+            <LanguageSwitcher />
           </div>
 
-          <div className="bg-[#171719] p-4 rounded-2xl border border-[#2F2F36] space-y-2 text-xs">
+          <div className="bg-[#141414] p-4 rounded-2xl border border-[#333333] space-y-2 text-xs">
             <div className="flex justify-between">
-              <span className="text-[#6B6B76]">Assessment:</span>
+              <span className="text-[#6B6861]">{t("exams")}:</span>
               <span className="font-bold text-white">{session?.exam_name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#6B6B76]">Subject:</span>
-              <span className="font-semibold text-[#FAF8F5]/80">{session?.subject}</span>
+              <span className="text-[#6B6861]">{t("subject")}:</span>
+              <span className="font-semibold text-stone-300">{session?.subject}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#6B6B76]">Candidate:</span>
+              <span className="text-[#6B6861]">{t("student")}:</span>
               <span className="font-semibold text-white">{user?.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#6B6B76]">Registration #:</span>
-              <span className="font-mono font-bold text-[#FAF8F5]">
+              <span className="text-[#6B6861]">{t("registration_number")}:</span>
+              <span className="font-mono font-bold text-[#C5A04A]">
                 {user?.registration_number || "STU-2026-000001"}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#6B6B76]">Duration:</span>
-              <span className="font-bold text-[#2B7853]">{session?.duration_minutes} Minutes</span>
+              <span className="text-[#6B6861]">{t("duration")}:</span>
+              <span className="font-bold text-[#4F8A63]">{session?.duration_minutes} {t("minutes")}</span>
             </div>
           </div>
 
           {/* Webcam Preview Check */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-[#6B6B76] uppercase tracking-wider flex items-center gap-1.5">
-              <Video className="h-3.5 w-3.5 text-[#E06A26]" />
-              Camera Feed Verification
+            <label className="text-xs font-bold text-[#6B6861] uppercase tracking-wider flex items-center gap-1.5">
+              <Video className="h-3.5 w-3.5 text-[#C5A04A]" />
+              {t("camera_verification")}
             </label>
-            <div className="relative aspect-video rounded-2xl overflow-hidden bg-[#171719] border border-[#2F2F36] flex items-center justify-center">
+            <div className="relative aspect-video rounded-2xl overflow-hidden bg-[#141414] border border-[#333333] flex items-center justify-center">
               <video
                 ref={preflightVideoRef}
                 autoPlay
@@ -1015,21 +1019,21 @@ export default function ExamAttemptPage() {
                 className={`w-full h-full object-cover ${cameraActive ? "block" : "hidden"}`}
               />
               {!cameraActive && (
-                <div className="text-center p-3 text-[#6B6B76] text-xs">
-                  <VideoOff className="h-8 w-8 mx-auto mb-2 text-[#6B6B76]" />
+                <div className="text-center p-3 text-[#6B6861] text-xs">
+                  <VideoOff className="h-8 w-8 mx-auto mb-2 text-[#6B6861]" />
                   <span>{cameraError || "Camera initializing... please allow browser camera permissions."}</span>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="bg-[#FEF7EC]/10 border border-[#FDE68A]/20 rounded-2xl p-3.5 text-[11px] text-[#D97706] space-y-1">
+          <div className="bg-[#FAF4EA]/10 border border-[#E9D2AE]/20 rounded-2xl p-3.5 text-[11px] text-[#C58A35] space-y-1">
             <span className="font-bold flex items-center gap-1">
-              <AlertTriangle className="h-3.5 w-3.5" /> Examination Regulations:
+              <AlertTriangle className="h-3.5 w-3.5 text-[#C58A35]" /> {t("exam_regulations")}
             </span>
-            <ul className="list-disc list-inside space-y-0.5 text-[#FAF8F5]/90 pl-1">
-              <li>Assessment must be completed exclusively in Fullscreen Mode.</li>
-              <li>Exiting fullscreen, switching browser tabs, or defocusing is recorded.</li>
+            <ul className="list-disc list-inside space-y-0.5 text-[#F4F1E8] pl-1">
+              <li>{t("fullscreen_mandatory_rule")}</li>
+              <li>{t("fullscreen_warning_rule")}</li>
               <li>Reaching {session?.maximum_tab_switch_warnings ?? 2} security warnings will automatically submit your exam.</li>
             </ul>
           </div>
@@ -1038,10 +1042,10 @@ export default function ExamAttemptPage() {
             variant="primary"
             size="lg"
             onClick={handleEnterFullscreenAndBegin}
-            className="w-full bg-[#E06A26] hover:bg-[#C95716] border border-[#C95716] text-white font-bold text-sm shadow-xl"
+            className="w-full bg-[#C5A04A] hover:bg-[#D4AF37] border border-[#C5A04A] text-[#141414] font-bold text-sm shadow-xl"
           >
             <Maximize2 className="h-4 w-4 mr-2" />
-            Enter Fullscreen & Begin Assessment
+            {t("enter_fullscreen_begin")}
           </Button>
         </div>
       </div>
@@ -1050,24 +1054,24 @@ export default function ExamAttemptPage() {
 
   // 11. Main Proctored Examination Workspace
   return (
-    <div className="min-h-screen bg-[#171719] text-slate-100 flex flex-col select-none">
+    <div className="min-h-screen bg-[#141414] text-[#F4F1E8] flex flex-col select-none">
       {/* Top Authoritative Status Bar */}
-      <header className="bg-[#1C1C1F]/95 backdrop-blur-md border-b border-[#2F2F36] px-6 py-3 sticky top-0 z-30 flex items-center justify-between shadow-md">
+      <header className="bg-[#181818]/95 backdrop-blur-md border-b border-[#262626] px-6 py-3 sticky top-0 z-30 flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5">
-            <span className="p-2 bg-[#E06A26] text-white rounded-xl border border-[#C95716]">
+            <span className="p-2 bg-[#C5A04A] text-[#141414] rounded-xl border border-[#C5A04A] shadow-sm">
               <Shield className="h-4 w-4" />
             </span>
             <div>
               <h1 className="text-sm font-bold text-white tracking-wide">
                 {session?.exam_name} • {session?.subject}
               </h1>
-              <div className="flex items-center gap-2 text-[11px] text-[#6B6B76]">
-                <span className="font-mono text-[#FAF8F5]">{user?.registration_number}</span>
+              <div className="flex items-center gap-2 text-[11px] text-[#8C887B]">
+                <span className="font-mono text-[#F4F1E8]">{user?.registration_number}</span>
                 <span>•</span>
-                <span className="text-[#2B7853] font-semibold">● Active</span>
+                <span className="text-[#4F8A63] font-semibold">● {t("active_status")}</span>
                 <span>•</span>
-                <span className="text-[#6B6B76]">{saveStatus}</span>
+                <span className="text-[#8C887B]">{saveStatus}</span>
               </div>
             </div>
           </div>
@@ -1075,43 +1079,45 @@ export default function ExamAttemptPage() {
 
         {/* Center: Server-Authoritative Real Live Countdown Timer */}
         <div className="flex flex-col items-center">
-          <span className="text-[10px] text-[#6B6B76] font-bold uppercase tracking-wider">{t("time_remaining")}</span>
+          <span className="text-[10px] text-[#8C887B] font-bold uppercase tracking-wider">{t("time_remaining")}</span>
           <div
             className={`px-4 py-1 rounded-xl font-mono text-base font-black flex items-center gap-2 transition-all ${
               remainingSeconds < 300
-                ? "bg-[#C85332]/20 text-[#FEF3EC] border border-[#C85332]/50 animate-pulse"
-                : "bg-[#242428] text-white border border-[#2F2F36]"
+                ? "bg-[#B8544F]/20 text-[#FCA5A5] border border-[#B8544F]/60 animate-pulse"
+                : "bg-[#202020] text-[#C5A04A] border border-[#2F2F2F]"
             }`}
           >
-            <Clock className={`h-4 w-4 ${remainingSeconds < 300 ? "text-[#C85332]" : "text-[#E06A26]"}`} />
+            <Clock className={`h-4 w-4 ${remainingSeconds < 300 ? "text-[#B8544F]" : "text-[#C5A04A]"}`} />
             <span>{formatTime(remainingSeconds)}</span>
           </div>
         </div>
 
         {/* Right Security & Submission Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
+          <LanguageSwitcher />
+
           {/* Mobile Palette Drawer Trigger */}
           <button
             type="button"
             onClick={() => setMobileDrawerOpen(true)}
-            className="md:hidden flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-[#242428] text-[#FAF8F5] border border-[#2F2F36] hover:bg-[#2C2C32] transition-colors"
-            title="Question Palette"
+            className="md:hidden flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-[#202020] text-[#F4F1E8] border border-[#2F2F2F] hover:bg-[#282828] transition-colors"
+            title={t("question_palette")}
           >
             <LayoutGrid className="h-3.5 w-3.5" />
-            <span className="hidden xs:inline">Palette</span>
+            <span className="hidden xs:inline">{t("question_palette")}</span>
           </button>
 
           {/* Real Tab Warnings Count */}
           <div
             className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl text-xs font-semibold ${
               tabWarnings > 0
-                ? "bg-[#C85332]/20 text-[#FEF3EC] border border-[#C85332]/40"
-                : "bg-[#242428] text-[#FAF8F5] border border-[#2F2F36]"
+                ? "bg-[#B8544F]/20 text-[#FCA5A5] border border-[#B8544F]/50"
+                : "bg-[#202020] text-[#F4F1E8] border border-[#2F2F2F]"
             }`}
           >
-            <AlertTriangle className="h-3.5 w-3.5 text-[#D97706]" />
+            <AlertTriangle className="h-3.5 w-3.5 text-[#C58A35]" />
             <span>
-              Warnings: {tabWarnings} / {maxWarnings}
+              {t("warning")}: {tabWarnings} / {maxWarnings}
             </span>
           </div>
 
@@ -1119,9 +1125,9 @@ export default function ExamAttemptPage() {
             variant="success"
             size="sm"
             onClick={() => setShowSubmitModal(true)}
-            className="font-bold shadow-sm"
+            className="font-bold shadow-md bg-[#4F8A63] hover:bg-[#437755] text-white border-0"
           >
-            <Send className="h-3.5 w-3.5 sm:mr-1" /> Finish & Submit
+            <Send className="h-3.5 w-3.5 sm:mr-1" /> {t("submit_assessment")}
           </Button>
         </div>
       </header>
@@ -1133,27 +1139,27 @@ export default function ExamAttemptPage() {
           {currentQuestion ? (
             <div className="max-w-3xl mx-auto space-y-6">
               {/* Question Header */}
-              <div className="bg-[#1C1C1F] border border-[#2F2F36] rounded-2xl p-5 flex items-center justify-between shadow-sm">
+              <div className="bg-[#202020] border border-[#2F2F2F] rounded-2xl p-5 flex items-center justify-between shadow-md">
                 <div className="flex items-center gap-3">
-                  <span className="h-8 w-8 rounded-xl bg-[#E06A26] text-white font-extrabold text-sm flex items-center justify-center border border-[#C95716]">
+                  <span className="h-8 w-8 rounded-xl bg-[#C5A04A] text-[#141414] font-extrabold text-sm flex items-center justify-center border border-[#C5A04A] shadow-sm">
                     {currentIndex + 1}
                   </span>
                   <div>
-                    <div className="text-xs font-semibold text-[#FAF8F5] uppercase tracking-wider">
+                    <div className="text-xs font-semibold text-[#F4F1E8] uppercase tracking-wider">
                       {t("question")} {currentIndex + 1} {t("of")} {totalQuestions}
                     </div>
-                    <div className="text-[11px] text-[#6B6B76] font-mono">
-                      Type: {currentQuestion.question_type}
+                    <div className="text-[11px] text-[#8C887B] font-mono">
+                      {t("question_type")}: {t(currentQuestion.question_type.toLowerCase()) || currentQuestion.question_type}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#EFF7F2]/10 text-[#2B7853] border border-[#2B7853]/30 font-mono">
+                  <span className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#4F8A63]/15 text-[#72B489] border border-[#4F8A63]/30 font-mono">
                     +{currentQuestion.marks} pts
                   </span>
                   {(currentQuestion.negative_marks ?? 0) > 0 && (
-                    <span className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#FEF3EC]/10 text-[#C85332] border border-[#C85332]/30 font-mono">
+                    <span className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#B8544F]/15 text-[#F87171] border border-[#B8544F]/30 font-mono">
                       -{currentQuestion.negative_marks} pts
                     </span>
                   )}
@@ -1161,8 +1167,8 @@ export default function ExamAttemptPage() {
                     onClick={() => handleToggleMarkReview(currentQuestion.id)}
                     className={`flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-lg border transition-all ${
                       answers[currentQuestion.id]?.isMarkedForReview
-                        ? "bg-[#FEF7EC]/20 border-[#D97706]/50 text-[#D97706]"
-                        : "bg-[#242428] border-[#2F2F36] text-[#6B6B76] hover:text-white"
+                        ? "bg-[#C58A35]/20 border-[#C58A35]/60 text-[#E6C670]"
+                        : "bg-[#181818] border-[#2F2F2F] text-[#8C887B] hover:text-white"
                     }`}
                   >
                     <Bookmark className="h-3.5 w-3.5" />
@@ -1172,9 +1178,9 @@ export default function ExamAttemptPage() {
               </div>
 
               {/* Question Text & Answer Input */}
-              <div className="bg-[#1C1C1F] border border-[#2F2F36] rounded-2xl p-6 space-y-4 shadow-sm">
+              <div className="bg-[#202020] border border-[#2F2F2F] rounded-2xl p-6 space-y-4 shadow-md">
                 <p className="text-base sm:text-lg font-medium text-white leading-relaxed whitespace-pre-wrap">
-                  {currentQuestion.question_text}
+                  {getLocalizedQuestionText(currentQuestion, language)}
                 </p>
 
                 {/* MCQ & Multi-Select Options */}
@@ -1191,20 +1197,22 @@ export default function ExamAttemptPage() {
                           onClick={() => handleSelectOption(currentQuestion.id, opt.id, isMulti)}
                           className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
                             isSelected
-                              ? "bg-[#E06A26]/15 border-[#E06A26] text-white shadow-sm ring-1 ring-[#E06A26]/40"
-                              : "bg-[#242428] border-[#2F2F36] hover:bg-[#2C2C32] text-[#FAF8F5]"
+                              ? "bg-[#C5A04A]/15 border-[#C5A04A] text-white shadow-sm ring-1 ring-[#C5A04A]/50"
+                              : "bg-[#181818] border-[#2F2F2F] hover:bg-[#242424] text-[#F4F1E8]"
                           }`}
                         >
                           <div
                             className={`h-5 w-5 rounded-${isMulti ? "md" : "full"} flex items-center justify-center text-xs font-bold border transition-colors ${
                               isSelected
-                                ? "bg-[#E06A26] border-[#C95716] text-white"
-                                : "border-[#2F2F36] bg-[#171719] text-[#6B6B76]"
+                                ? "bg-[#C5A04A] border-[#C5A04A] text-[#141414]"
+                                : "border-[#3A3A3A] bg-[#141414] text-[#8C887B]"
                             }`}
                           >
                             {isSelected ? "✓" : String.fromCharCode(65 + optIdx)}
                           </div>
-                          <span className="text-sm font-medium leading-relaxed">{opt.option_text}</span>
+                          <span className="text-sm font-medium leading-relaxed">
+                            {getLocalizedOptionText(opt, language)}
+                          </span>
                         </div>
                       );
                     })}
@@ -1221,26 +1229,27 @@ export default function ExamAttemptPage() {
                   const charCount = currentText.length;
                   const isExceeded = wordCount > maxWords;
                   const isBelowMin = !isShort && wordCount > 0 && wordCount < minWords;
+                  const promptInfo = getWrittenPromptLabels(currentQuestion.question_type, language);
 
                   return (
                     <div className="space-y-2 pt-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <label className="text-xs font-semibold text-stone-400 uppercase tracking-wider">
-                          Your Written Response {isShort ? "(Max 100 words)" : "(Min 10, Max 600 words)"}
+                        <label className="text-xs font-semibold text-[#8C887B] uppercase tracking-wider">
+                          {promptInfo.label}
                         </label>
                         <div className="flex items-center gap-2 text-xs font-mono">
-                          <span className="px-2.5 py-0.5 rounded-lg border bg-stone-900 border-stone-800 text-stone-400">
+                          <span className="px-2.5 py-0.5 rounded-lg border bg-[#181818] border-[#2F2F2F] text-[#8C887B]">
                             {t("characters")}: {charCount}
                           </span>
                           <span
                             className={`font-bold px-2.5 py-0.5 rounded-lg border ${
                               isExceeded
-                                ? "bg-red-500/20 text-red-300 border-red-500/50 animate-pulse"
+                                ? "bg-[#B8544F]/20 text-[#FCA5A5] border-[#B8544F]/50 animate-pulse"
                                 : isBelowMin
-                                ? "bg-amber-500/20 text-amber-300 border-amber-500/50"
+                                ? "bg-[#C58A35]/20 text-[#E6C670] border-[#C58A35]/50"
                                 : wordCount > 0
-                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50"
-                                : "bg-stone-900 text-stone-400 border-stone-800"
+                                ? "bg-[#4F8A63]/20 text-[#72B489] border-[#4F8A63]/50"
+                                : "bg-[#181818] text-[#8C887B] border-[#2F2F2F]"
                             }`}
                           >
                             {t("words")}: {wordCount} / {maxWords} {isExceeded ? `(${t("limit_exceeded")}!)` : isBelowMin ? "(Min 10 words)" : ""}
@@ -1252,15 +1261,15 @@ export default function ExamAttemptPage() {
                         value={currentText}
                         onChange={(e) => handleTextAnswerChange(currentQuestion.id, e.target.value)}
                         onBlur={() => handleBlurTextAnswer(currentQuestion.id)}
-                        placeholder={isShort ? "Type your short answer (maximum 100 words)..." : "Provide comprehensive reasoning and explanation (10 to 600 words)..."}
-                        className={`w-full px-4 py-3 bg-[#18181B] border rounded-xl text-white placeholder-stone-500 focus:outline-none text-sm transition-all ${
+                        placeholder={promptInfo.placeholder}
+                        className={`w-full px-4 py-3 bg-[#181818] border rounded-xl text-white placeholder-[#6B6861] focus:outline-none text-sm transition-all ${
                           isExceeded
-                            ? "border-red-500 ring-1 ring-red-500"
-                            : "border-stone-700 focus:border-[#E06A26] focus:ring-1 focus:ring-[#E06A26]"
+                            ? "border-[#B8544F] ring-1 ring-[#B8544F]"
+                            : "border-[#2F2F2F] focus:border-[#C5A04A] focus:ring-1 focus:ring-[#C5A04A]"
                         }`}
                       />
                       {isExceeded && (
-                        <p className="text-xs text-red-400 font-medium">
+                        <p className="text-xs text-[#F87171] font-medium">
                           Word limit exceeded. Please edit your answer to be within {maxWords} words.
                         </p>
                       )}
@@ -1272,19 +1281,19 @@ export default function ExamAttemptPage() {
                 {currentQuestion.question_type === "IMAGE_UPLOAD" && (
                   <div className="space-y-4 pt-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-stone-400 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-[#8C887B] uppercase tracking-wider">
                         Diagram / Handwritten Solution (PNG, JPEG, WEBP - Max 5MB)
                       </label>
                       {answers[currentQuestion.id]?.imagePath && (
-                        <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-md border border-emerald-500/30 flex items-center gap-1">
+                        <span className="text-xs font-semibold text-[#72B489] bg-[#4F8A63]/15 px-2.5 py-0.5 rounded-md border border-[#4F8A63]/30 flex items-center gap-1">
                           <CheckCircle2 className="h-3.5 w-3.5" /> Solution Attached
                         </span>
                       )}
                     </div>
 
                     {answers[currentQuestion.id]?.imagePath ? (
-                      <div className="p-4 bg-[#18181B] border border-stone-700 rounded-2xl flex flex-col sm:flex-row items-center gap-4">
-                        <div className="w-32 h-32 rounded-xl overflow-hidden bg-black/60 border border-stone-700 flex items-center justify-center shrink-0">
+                      <div className="p-4 bg-[#181818] border border-[#2F2F2F] rounded-2xl flex flex-col sm:flex-row items-center gap-4">
+                        <div className="w-32 h-32 rounded-xl overflow-hidden bg-black/60 border border-[#2F2F2F] flex items-center justify-center shrink-0">
                           <img
                             src={
                               answers[currentQuestion.id]?.thumbnailPath
@@ -1297,11 +1306,11 @@ export default function ExamAttemptPage() {
                         </div>
                         <div className="space-y-2 flex-1 text-center sm:text-left">
                           <p className="text-sm font-semibold text-white">Solution Image Saved</p>
-                          <p className="text-xs text-stone-400 font-mono break-all">
+                          <p className="text-xs text-[#8C887B] font-mono break-all">
                             {answers[currentQuestion.id]?.imagePath}
                           </p>
                           <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start pt-1">
-                            <label className="cursor-pointer px-3 py-1.5 text-xs font-semibold rounded-lg bg-stone-800 hover:bg-stone-700 border border-stone-700 text-stone-200 transition-colors">
+                            <label className="cursor-pointer px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#202020] hover:bg-[#282828] border border-[#2F2F2F] text-[#F4F1E8] transition-colors">
                               <span>Replace File</span>
                               <input
                                 type="file"
@@ -1313,14 +1322,14 @@ export default function ExamAttemptPage() {
                             <button
                               type="button"
                               onClick={() => openDirectCameraModal(currentQuestion.id)}
-                              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#E06A26]/10 hover:bg-[#E06A26]/20 border border-[#E06A26]/30 text-[#E06A26] transition-colors flex items-center gap-1.5"
+                              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#C5A04A]/15 hover:bg-[#C5A04A]/25 border border-[#C5A04A]/40 text-[#C5A04A] transition-colors flex items-center gap-1.5"
                             >
                               <Camera className="h-3.5 w-3.5" /> Retake with Camera
                             </button>
                             <button
                               type="button"
                               onClick={() => handleRemoveImage(currentQuestion.id)}
-                              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 transition-colors"
+                              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#B8544F]/15 hover:bg-[#B8544F]/25 border border-[#B8544F]/30 text-[#F87171] transition-colors"
                             >
                               Remove
                             </button>
@@ -1330,7 +1339,7 @@ export default function ExamAttemptPage() {
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Option 1: File Upload */}
-                        <div className="border-2 border-dashed border-stone-700 hover:border-stone-500 rounded-2xl p-6 text-center transition-colors bg-[#18181B]/50 flex flex-col items-center justify-center">
+                        <div className="border-2 border-dashed border-[#2F2F2F] hover:border-[#C5A04A]/50 rounded-2xl p-6 text-center transition-colors bg-[#181818]/60 flex flex-col items-center justify-center">
                           <input
                             type="file"
                             id={`upload-${currentQuestion.id}`}
@@ -1342,29 +1351,29 @@ export default function ExamAttemptPage() {
                             htmlFor={`upload-${currentQuestion.id}`}
                             className="cursor-pointer flex flex-col items-center justify-center gap-2 w-full"
                           >
-                            <div className="h-11 w-11 rounded-full bg-stone-800 border border-stone-700 flex items-center justify-center text-stone-300">
+                            <div className="h-11 w-11 rounded-full bg-[#202020] border border-[#2F2F2F] flex items-center justify-center text-[#C5A04A]">
                               <Upload className="h-5 w-5" />
                             </div>
                             <span className="text-xs font-bold text-white">Upload Image File</span>
-                            <span className="text-[11px] text-stone-400">PNG, JPG, or WEBP up to 5MB</span>
+                            <span className="text-[11px] text-[#8C887B]">PNG, JPG, or WEBP up to 5MB</span>
                           </label>
                           {isUploadingImage && (
-                            <p className="text-xs text-amber-400 mt-2 animate-pulse">Uploading and generating thumbnail...</p>
+                            <p className="text-xs text-[#C58A35] mt-2 animate-pulse">Uploading and generating thumbnail...</p>
                           )}
                         </div>
 
                         {/* Option 2: Direct Camera Capture */}
-                        <div className="border-2 border-dashed border-[#E06A26]/40 hover:border-[#E06A26] rounded-2xl p-6 text-center transition-colors bg-[#E06A26]/5 flex flex-col items-center justify-center">
+                        <div className="border-2 border-dashed border-[#C5A04A]/40 hover:border-[#C5A04A] rounded-2xl p-6 text-center transition-colors bg-[#C5A04A]/5 flex flex-col items-center justify-center">
                           <button
                             type="button"
                             onClick={() => openDirectCameraModal(currentQuestion.id)}
                             className="flex flex-col items-center justify-center gap-2 w-full focus:outline-none"
                           >
-                            <div className="h-11 w-11 rounded-full bg-[#E06A26]/20 border border-[#E06A26]/40 flex items-center justify-center text-[#E06A26]">
+                            <div className="h-11 w-11 rounded-full bg-[#C5A04A]/20 border border-[#C5A04A]/40 flex items-center justify-center text-[#C5A04A]">
                               <Camera className="h-5 w-5" />
                             </div>
                             <span className="text-xs font-bold text-white">Capture Using Camera</span>
-                            <span className="text-[11px] text-stone-400">Snap photo directly from device</span>
+                            <span className="text-[11px] text-[#8C887B]">Snap photo directly from device</span>
                           </button>
                         </div>
                       </div>
@@ -1373,10 +1382,10 @@ export default function ExamAttemptPage() {
                 )}
 
                 {/* Question Actions */}
-                <div className="flex items-center justify-between pt-4 border-t border-[#2F2F36]">
+                <div className="flex items-center justify-between pt-4 border-t border-[#2F2F2F]">
                   <button
                     onClick={() => handleClearAnswer(currentQuestion.id)}
-                    className="text-xs font-medium text-[#6B6B76] hover:text-white transition-colors"
+                    className="text-xs font-medium text-[#8C887B] hover:text-white transition-colors"
                   >
                     {t("clear_response")}
                   </button>
@@ -1387,7 +1396,7 @@ export default function ExamAttemptPage() {
                       size="sm"
                       disabled={currentIndex === 0}
                       onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
-                      className="bg-[#242428] hover:bg-[#2C2C32] border-[#2F2F36] text-[#FAF8F5]"
+                      className="bg-[#202020] hover:bg-[#282828] border-[#2F2F2F] text-[#F4F1E8]"
                     >
                       <ChevronLeft className="h-3.5 w-3.5 mr-1" /> {t("previous")}
                     </Button>
@@ -1397,7 +1406,7 @@ export default function ExamAttemptPage() {
                         variant="primary"
                         size="sm"
                         onClick={() => setCurrentIndex((prev) => Math.min(totalQuestions - 1, prev + 1))}
-                        className="bg-[#E06A26] hover:bg-[#C95716] border border-[#C95716]"
+                        className="bg-[#C5A04A] hover:bg-[#D4AF37] border border-[#C5A04A] text-[#141414] font-bold"
                       >
                         {t("next")} <ChevronRight className="h-3.5 w-3.5 ml-1" />
                       </Button>
@@ -1406,7 +1415,7 @@ export default function ExamAttemptPage() {
                         variant="success"
                         size="sm"
                         onClick={() => setShowSubmitModal(true)}
-                        className="font-bold shadow-sm"
+                        className="font-bold shadow-md bg-[#4F8A63] hover:bg-[#437755] text-white border-0"
                       >
                         {t("review_and_submit")} <Send className="h-3.5 w-3.5 ml-1" />
                       </Button>
@@ -1416,25 +1425,25 @@ export default function ExamAttemptPage() {
               </div>
             </div>
           ) : (
-            <div className="text-center py-16 text-[#6B6B76]">No questions available in this session.</div>
+            <div className="text-center py-16 text-[#8C887B]">No questions available in this session.</div>
           )}
         </main>
 
         {/* Right Sidebar: Real Webcam & Question Palette */}
-        <aside className="w-80 border-l border-[#2F2F36] bg-[#1C1C1F]/95 p-6 flex flex-col justify-between hidden md:flex space-y-6 overflow-y-auto">
+        <aside className="w-80 border-l border-[#262626] bg-[#181818]/95 p-6 flex flex-col justify-between hidden md:flex space-y-6 overflow-y-auto">
           {/* 1. Live Proctoring Webcam View */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#6B6B76] flex items-center gap-1.5">
-                <Video className="h-3.5 w-3.5 text-[#E06A26]" />
+              <span className="text-xs font-bold uppercase tracking-wider text-[#8C887B] flex items-center gap-1.5">
+                <Video className="h-3.5 w-3.5 text-[#C5A04A]" />
                 Live Proctoring
               </span>
-              <span className="flex items-center gap-1 text-[10px] font-bold text-[#FEF3EC] bg-[#C85332]/20 px-2 py-0.5 rounded-full border border-[#C85332]/30 animate-pulse">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#C85332]"></span> REC
+              <span className="flex items-center gap-1 text-[10px] font-bold text-[#FCA5A5] bg-[#B8544F]/20 px-2 py-0.5 rounded-full border border-[#B8544F]/40 animate-pulse">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#B8544F]"></span> REC
               </span>
             </div>
 
-            <div className="relative aspect-video rounded-2xl overflow-hidden bg-[#171719] border border-[#2F2F36] flex items-center justify-center shadow-inner">
+            <div className="relative aspect-video rounded-2xl overflow-hidden bg-[#141414] border border-[#2F2F2F] flex items-center justify-center shadow-inner">
               <video
                 ref={videoRef}
                 autoPlay
@@ -1443,8 +1452,8 @@ export default function ExamAttemptPage() {
                 className={`w-full h-full object-cover ${cameraActive ? "block" : "hidden"}`}
               />
               {!cameraActive && (
-                <div className="text-center p-3 text-[#6B6B76] text-xs">
-                  <VideoOff className="h-6 w-6 mx-auto mb-1 text-[#6B6B76]" />
+                <div className="text-center p-3 text-[#8C887B] text-xs">
+                  <VideoOff className="h-6 w-6 mx-auto mb-1 text-[#8C887B]" />
                   <span>{cameraError || "Camera initializing..."}</span>
                 </div>
               )}
@@ -1453,19 +1462,19 @@ export default function ExamAttemptPage() {
 
           {/* 2. Question Status Summary */}
           <div className="space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#6B6B76]">Status Summary</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-[#8C887B]">{t("status_summary")}</span>
             <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <div className="bg-[#EFF7F2]/10 border border-[#2B7853]/25 p-2 rounded-xl">
-                <div className="text-base font-bold text-[#2B7853] font-mono">{answeredCount}</div>
-                <div className="text-[10px] text-[#6B6B76]">Answered</div>
+              <div className="bg-[#4F8A63]/15 border border-[#4F8A63]/30 p-2 rounded-xl">
+                <div className="text-base font-bold text-[#72B489] font-mono">{answeredCount}</div>
+                <div className="text-[10px] text-[#8C887B]">{t("answered")}</div>
               </div>
-              <div className="bg-[#FEF7EC]/10 border border-[#D97706]/25 p-2 rounded-xl">
-                <div className="text-base font-bold text-[#D97706] font-mono">{markedCount}</div>
-                <div className="text-[10px] text-[#6B6B76]">Review</div>
+              <div className="bg-[#C58A35]/15 border border-[#C58A35]/30 p-2 rounded-xl">
+                <div className="text-base font-bold text-[#E6C670] font-mono">{markedCount}</div>
+                <div className="text-[10px] text-[#8C887B]">{t("review")}</div>
               </div>
-              <div className="bg-[#242428] border border-[#2F2F36] p-2 rounded-xl">
-                <div className="text-base font-bold text-[#FAF8F5] font-mono">{unansweredCount}</div>
-                <div className="text-[10px] text-[#6B6B76]">Remaining</div>
+              <div className="bg-[#202020] border border-[#2F2F2F] p-2 rounded-xl">
+                <div className="text-base font-bold text-[#F4F1E8] font-mono">{unansweredCount}</div>
+                <div className="text-[10px] text-[#8C887B]">{t("remaining")}</div>
               </div>
             </div>
           </div>
@@ -1473,27 +1482,27 @@ export default function ExamAttemptPage() {
           {/* 3. Question Palette Grid */}
           <div className="space-y-2 flex-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#6B6B76]">Question Palette</span>
-              <span className="text-[10px] text-[#6B6B76] font-mono">{questions.length} total</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#8C887B]">{t("question_palette")}</span>
+              <span className="text-[10px] text-[#8C887B] font-mono">{questions.length}</span>
             </div>
 
             {/* 4-State Palette Legend */}
-            <div className="grid grid-cols-2 gap-1.5 text-[10px] text-[#FAF8F5]/80 pb-1">
+            <div className="grid grid-cols-2 gap-1.5 text-[10px] text-[#F4F1E8]/80 pb-1">
               <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#2B7853]"></span>
-                <span>Answered</span>
+                <span className="h-2.5 w-2.5 rounded-full bg-[#4F8A63]"></span>
+                <span>{t("answered")}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#2F2F36]"></span>
-                <span>Unanswered</span>
+                <span className="h-2.5 w-2.5 rounded-full bg-[#2F2F2F]"></span>
+                <span>{t("unanswered")}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#D97706]"></span>
-                <span>Marked Review</span>
+                <span className="h-2.5 w-2.5 rounded-full bg-[#C58A35]"></span>
+                <span>{t("marked_review")}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#E06A26]"></span>
-                <span>Answered & Review</span>
+                <span className="h-2.5 w-2.5 rounded-full bg-[#C5A04A]"></span>
+                <span>{t("answered_and_marked")}</span>
               </div>
             </div>
 
@@ -1504,16 +1513,16 @@ export default function ExamAttemptPage() {
                 const isAnswered = Boolean(ans && (ans.selectedOptionIds.length > 0 || ans.textAnswer.trim().length > 0));
                 const isMarked = Boolean(ans && ans.isMarkedForReview);
 
-                let btnStyle = "bg-[#242428] text-[#6B6B76] border-[#2F2F36] hover:bg-[#2C2C32]";
+                let btnStyle = "bg-[#202020] text-[#8C887B] border-[#2F2F2F] hover:bg-[#282828]";
                 if (isAnswered && isMarked) {
                   // ANSWERED_AND_MARKED_FOR_REVIEW
-                  btnStyle = "bg-[#E06A26]/30 text-[#FED7AA] border-[#E06A26] font-bold";
+                  btnStyle = "bg-[#C5A04A]/25 text-[#E6C670] border-[#C5A04A] font-bold";
                 } else if (isMarked) {
                   // MARKED_FOR_REVIEW
-                  btnStyle = "bg-[#FEF7EC]/20 text-[#D97706] border-[#D97706]/50 font-bold";
+                  btnStyle = "bg-[#C58A35]/25 text-[#E6C670] border-[#C58A35]/50 font-bold";
                 } else if (isAnswered) {
                   // ANSWERED
-                  btnStyle = "bg-[#EFF7F2]/20 text-[#2B7853] border-[#2B7853]/50 font-bold";
+                  btnStyle = "bg-[#4F8A63]/25 text-[#72B489] border-[#4F8A63]/50 font-bold";
                 }
 
                 return (
@@ -1521,7 +1530,7 @@ export default function ExamAttemptPage() {
                     key={q.id}
                     onClick={() => setCurrentIndex(idx)}
                     className={`h-9 rounded-lg font-mono text-xs font-bold border transition-all ${btnStyle} ${
-                      isCurrent ? "ring-2 ring-[#E06A26] ring-offset-2 ring-offset-[#1C1C1F] border-[#E06A26] text-white" : ""
+                      isCurrent ? "ring-2 ring-[#C5A04A] ring-offset-2 ring-offset-[#181818] border-[#C5A04A] text-white" : ""
                     }`}
                   >
                     {idx + 1}
@@ -1536,9 +1545,9 @@ export default function ExamAttemptPage() {
             variant="success"
             size="md"
             onClick={() => setShowSubmitModal(true)}
-            className="w-full font-bold shadow-md"
+            className="w-full font-bold shadow-md bg-[#4F8A63] hover:bg-[#437755] text-white border-0"
           >
-            Review & Final Submit
+            {t("review_and_submit")}
           </Button>
         </aside>
       </div>
@@ -1546,20 +1555,20 @@ export default function ExamAttemptPage() {
       {/* Fullscreen Exit Alert Modal */}
       {isFullscreenExitModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-slate-900 border-2 border-rose-500 rounded-2xl p-6 text-center space-y-4 shadow-2xl">
-            <div className="p-3 bg-rose-500/20 text-rose-400 rounded-full w-fit mx-auto border border-rose-500/30">
+          <div className="max-w-md w-full bg-[#181818] border-2 border-[#B8544F] rounded-2xl p-6 text-center space-y-4 shadow-2xl">
+            <div className="p-3 bg-[#B8544F]/20 text-[#F87171] rounded-full w-fit mx-auto border border-[#B8544F]/30">
               <ShieldAlert className="h-8 w-8" />
             </div>
-            <h3 className="text-lg font-bold text-white">Fullscreen Lock Exited!</h3>
-            <p className="text-xs text-rose-200 leading-relaxed">
-              Exiting full-screen examination mode is recorded as a security violation. Return to full screen immediately to avoid session termination.
+            <h3 className="text-lg font-bold text-white">{t("fullscreen_lock_exited")}</h3>
+            <p className="text-xs text-[#FCA5A5] leading-relaxed">
+              {t("fullscreen_lock_exited_desc")}
             </p>
             <Button
               variant="primary"
               onClick={handleEnterFullscreenAndBegin}
-              className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-2.5"
+              className="w-full bg-[#B8544F] hover:bg-[#A3433F] text-white font-bold text-xs py-2.5 border-0 shadow-md"
             >
-              Re-enter Fullscreen Now
+              {t("reenter_fullscreen")}
             </Button>
           </div>
         </div>
@@ -1568,19 +1577,19 @@ export default function ExamAttemptPage() {
       {/* Tab Switch Warning / Auto-Submit Modal */}
       {showWarningModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-slate-900 border-2 border-rose-500 rounded-2xl p-6 text-center space-y-4 shadow-2xl">
-            <div className="p-3 bg-rose-500/20 text-rose-400 rounded-full w-fit mx-auto border border-rose-500/30">
+          <div className="max-w-md w-full bg-[#181818] border-2 border-[#B8544F] rounded-2xl p-6 text-center space-y-4 shadow-2xl">
+            <div className="p-3 bg-[#B8544F]/20 text-[#F87171] rounded-full w-fit mx-auto border border-[#B8544F]/30">
               <AlertTriangle className="h-8 w-8" />
             </div>
             <h3 className="text-lg font-bold text-white">
-              {isAutoSubmitted ? "Exam Automatically Submitted" : "Security Violation Alert"}
+              {isAutoSubmitted ? t("exam_auto_submitted") : t("security_violation_alert")}
             </h3>
-            <div className="text-xs text-rose-200 leading-relaxed space-y-1.5">
+            <div className="text-xs text-[#FCA5A5] leading-relaxed space-y-1.5">
               {isAutoSubmitted ? (
                 <div className="space-y-2">
-                  <p className="font-semibold text-rose-300">Reason:</p>
+                  <p className="font-semibold text-[#F87171]">{t("submission_reason")}:</p>
                   <p className="text-white font-medium">{warningModalMessage}</p>
-                  <p className="text-slate-400 pt-1">Your examination has been authoritatively submitted and graded.</p>
+                  <p className="text-[#8C887B] pt-1">Your examination has been authoritatively submitted and graded.</p>
                 </div>
               ) : (
                 <p>{warningModalMessage}</p>
@@ -1591,17 +1600,17 @@ export default function ExamAttemptPage() {
                 <Button
                   variant="primary"
                   onClick={() => router.push(autoSubmitResultUrl || `/student/results?session_id=${session?.session_id}`)}
-                  className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-2.5"
+                  className="w-full bg-[#B8544F] hover:bg-[#A3433F] text-white font-bold text-xs py-2.5 border-0 shadow-md"
                 >
-                  View Scorecard
+                  {t("view_result")}
                 </Button>
               ) : (
                 <Button
                   variant="primary"
                   onClick={() => setShowWarningModal(false)}
-                  className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-2"
+                  className="w-full bg-[#B8544F] hover:bg-[#A3433F] text-white font-bold text-xs py-2 border-0 shadow-md"
                 >
-                  I Acknowledge & Return to Exam
+                  {t("acknowledge_return_exam")}
                 </Button>
               )}
             </div>
@@ -1612,55 +1621,55 @@ export default function ExamAttemptPage() {
       {/* Confirmation Submit Modal */}
       {showSubmitModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5 shadow-2xl">
+          <div className="max-w-md w-full bg-[#181818] border border-[#2F2F2F] rounded-2xl p-6 space-y-5 shadow-2xl">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-[#E06A26]/20 text-[#E06A26] rounded-xl border border-[#E06A26]/30">
+              <div className="p-2.5 bg-[#C5A04A]/20 text-[#C5A04A] rounded-xl border border-[#C5A04A]/30">
                 <CheckCircle2 className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Submit Examination?</h3>
-                <p className="text-xs text-slate-400">Please review your submission summary below.</p>
+                <h3 className="text-base font-bold text-white">{t("submit_exam_modal_title")}</h3>
+                <p className="text-xs text-[#8C887B]">{t("submit_exam_modal_desc")}</p>
               </div>
             </div>
 
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
-              <div className="flex justify-between text-slate-400">
-                <span>Total Questions:</span>
+            <div className="bg-[#141414] p-4 rounded-xl border border-[#262626] space-y-2 text-xs">
+              <div className="flex justify-between text-[#8C887B]">
+                <span>{t("total_questions")}:</span>
                 <span className="font-bold text-white">{totalQuestions}</span>
               </div>
-              <div className="flex justify-between text-emerald-400">
-                <span>Questions Answered:</span>
+              <div className="flex justify-between text-[#4F8A63]">
+                <span>{t("questions_answered")}:</span>
                 <span className="font-bold">{answeredCount}</span>
               </div>
-              <div className="flex justify-between text-amber-400">
-                <span>Marked for Review:</span>
+              <div className="flex justify-between text-[#C58A35]">
+                <span>{t("marked_for_review_stat")}:</span>
                 <span className="font-bold">{markedCount}</span>
               </div>
-              <div className="flex justify-between text-slate-500">
-                <span>Unanswered:</span>
+              <div className="flex justify-between text-[#8C887B]">
+                <span>{t("unanswered_stat")}:</span>
                 <span className="font-bold">{unansweredCount}</span>
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Once submitted, your answers will be authoritatively graded against the examination key with negative marking rules applied. You will not be able to resume this session.
+            <p className="text-[11px] text-[#8C887B] leading-relaxed">
+              {t("submit_exam_modal_warning")}
             </p>
 
             <div className="flex items-center gap-3 pt-2">
               <Button
                 variant="outline"
                 onClick={() => setShowSubmitModal(false)}
-                className="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700 text-xs py-2"
+                className="w-1/2 bg-[#202020] hover:bg-[#282828] text-[#8C887B] border-[#2F2F2F] text-xs py-2"
               >
-                Continue Exam
+                {t("continue_exam")}
               </Button>
               <Button
                 variant="primary"
                 onClick={handleConfirmSubmit}
                 isLoading={isSubmitting}
-                className="w-1/2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2 border-0"
+                className="w-1/2 bg-[#4F8A63] hover:bg-[#437755] text-white font-bold text-xs py-2 border-0 shadow-md"
               >
-                Confirm Submit
+                {t("confirm_submit")}
               </Button>
             </div>
           </div>
@@ -1670,20 +1679,20 @@ export default function ExamAttemptPage() {
       {/* Direct Camera Capture Modal */}
       {cameraModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="max-w-2xl w-full bg-[#242429] border border-stone-700 rounded-3xl p-6 space-y-4 shadow-2xl text-white">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-800">
+          <div className="max-w-2xl w-full bg-[#181818] border border-[#2F2F2F] rounded-3xl p-6 space-y-4 shadow-2xl text-white">
+            <div className="flex items-center justify-between pb-3 border-b border-[#262626]">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-[#E06A26]/20 text-[#E06A26] rounded-xl border border-[#E06A26]/30">
+                <div className="p-2 bg-[#C5A04A]/20 text-[#C5A04A] rounded-xl border border-[#C5A04A]/30">
                   <Camera className="h-5 w-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white">Direct Solution Camera Capture</h3>
-                  <p className="text-xs text-stone-400">Capture your handwritten answer sheet or diagram</p>
+                  <p className="text-xs text-[#8C887B]">Capture your handwritten answer sheet or diagram</p>
                 </div>
               </div>
               <button
                 onClick={closeDirectCameraModal}
-                className="p-1.5 text-stone-400 hover:text-white rounded-lg bg-stone-800 hover:bg-stone-700 transition-colors"
+                className="p-1.5 text-[#8C887B] hover:text-white rounded-lg bg-[#202020] hover:bg-[#282828] transition-colors border border-[#2F2F2F]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1692,7 +1701,7 @@ export default function ExamAttemptPage() {
             {/* Hidden canvas for taking snapshot */}
             <canvas ref={captureCanvasRef} className="hidden" />
 
-            <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-stone-800 flex items-center justify-center">
+            <div className="relative aspect-video rounded-2xl overflow-hidden bg-[#141414] border border-[#262626] flex items-center justify-center">
               {capturedPhotoUrl ? (
                 <img
                   src={capturedPhotoUrl}
@@ -1711,7 +1720,7 @@ export default function ExamAttemptPage() {
 
               {/* Status overlay */}
               {capturedPhotoUrl && (
-                <div className="absolute top-3 left-3 bg-emerald-600/90 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+                <div className="absolute top-3 left-3 bg-[#4F8A63]/90 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
                   <Check className="h-3.5 w-3.5" /> Photo Captured
                 </div>
               )}
@@ -1721,7 +1730,7 @@ export default function ExamAttemptPage() {
               <Button
                 variant="outline"
                 onClick={closeDirectCameraModal}
-                className="bg-stone-800 hover:bg-stone-700 text-stone-300 border-stone-700 text-xs py-2 px-4"
+                className="bg-[#202020] hover:bg-[#282828] text-[#8C887B] hover:text-white border-[#2F2F2F] text-xs py-2 px-4"
               >
                 Cancel
               </Button>
@@ -1732,14 +1741,14 @@ export default function ExamAttemptPage() {
                     <Button
                       variant="outline"
                       onClick={handleRetakePhoto}
-                      className="bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-700 text-xs py-2 px-4 gap-1.5"
+                      className="bg-[#202020] hover:bg-[#282828] text-[#F4F1E8] border-[#2F2F2F] text-xs py-2 px-4 gap-1.5"
                     >
                       <RotateCcw className="h-3.5 w-3.5" /> Retake Photo
                     </Button>
                     <Button
                       variant="primary"
                       onClick={handleUseCapturedPhoto}
-                      className="bg-[#E06A26] hover:bg-[#C95716] text-white font-bold text-xs py-2 px-5 gap-1.5 border-0 shadow-md"
+                      className="bg-[#C5A04A] hover:bg-[#D4AF37] text-[#141414] font-bold text-xs py-2 px-5 gap-1.5 border-0 shadow-md"
                     >
                       <Check className="h-4 w-4" /> Use This Photo
                     </Button>
@@ -1748,13 +1757,90 @@ export default function ExamAttemptPage() {
                   <Button
                     variant="primary"
                     onClick={handleCapturePhoto}
-                    className="bg-[#E06A26] hover:bg-[#C95716] text-white font-bold text-xs py-2.5 px-6 gap-2 border-0 shadow-lg"
+                    className="bg-[#C5A04A] hover:bg-[#D4AF37] text-[#141414] font-bold text-xs py-2.5 px-6 gap-2 border-0 shadow-lg"
                   >
                     <Camera className="h-4 w-4" /> Capture Photo
                   </Button>
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Question Palette Drawer */}
+      {mobileDrawerOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm md:hidden flex justify-end">
+          <div className="w-4/5 max-w-sm h-full bg-[#181818] border-l border-[#2F2F2F] p-5 flex flex-col justify-between overflow-y-auto space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-[#262626]">
+              <span className="text-sm font-bold text-white flex items-center gap-2">
+                <LayoutGrid className="h-4 w-4 text-[#C5A04A]" /> {t("question_palette")}
+              </span>
+              <button
+                onClick={() => setMobileDrawerOpen(false)}
+                className="p-1.5 text-[#8C887B] hover:text-white rounded-lg bg-[#202020] hover:bg-[#282828] border border-[#2F2F2F]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Status Summary */}
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="bg-[#4F8A63]/15 border border-[#4F8A63]/30 p-2 rounded-xl">
+                <div className="text-base font-bold text-[#72B489] font-mono">{answeredCount}</div>
+                <div className="text-[10px] text-[#8C887B]">{t("answered")}</div>
+              </div>
+              <div className="bg-[#C58A35]/15 border border-[#C58A35]/30 p-2 rounded-xl">
+                <div className="text-base font-bold text-[#E6C670] font-mono">{markedCount}</div>
+                <div className="text-[10px] text-[#8C887B]">{t("review")}</div>
+              </div>
+              <div className="bg-[#202020] border border-[#2F2F2F] p-2 rounded-xl">
+                <div className="text-base font-bold text-[#F4F1E8] font-mono">{unansweredCount}</div>
+                <div className="text-[10px] text-[#8C887B]">{t("remaining")}</div>
+              </div>
+            </div>
+
+            {/* Grid */}
+            <div className="grid grid-cols-4 gap-2 flex-1 overflow-y-auto py-2">
+              {questions.map((q, idx) => {
+                const ans = answers[q.id];
+                const isCurrent = idx === currentIndex;
+                const isAnswered = Boolean(ans && (ans.selectedOptionIds.length > 0 || ans.textAnswer.trim().length > 0));
+                const isMarked = Boolean(ans && ans.isMarkedForReview);
+
+                let btnStyle = "bg-[#202020] text-[#8C887B] border-[#2F2F2F]";
+                if (isAnswered && isMarked) {
+                  btnStyle = "bg-[#C5A04A]/25 text-[#E6C670] border-[#C5A04A] font-bold";
+                } else if (isMarked) {
+                  btnStyle = "bg-[#C58A35]/25 text-[#E6C670] border-[#C58A35]/50 font-bold";
+                } else if (isAnswered) {
+                  btnStyle = "bg-[#4F8A63]/25 text-[#72B489] border-[#4F8A63]/50 font-bold";
+                }
+
+                return (
+                  <button
+                    key={q.id}
+                    onClick={() => {
+                      setCurrentIndex(idx);
+                      setMobileDrawerOpen(false);
+                    }}
+                    className={`h-10 rounded-lg font-mono text-xs font-bold border transition-all ${btnStyle} ${
+                      isCurrent ? "ring-2 ring-[#C5A04A] ring-offset-2 ring-offset-[#181818] border-[#C5A04A] text-white" : ""
+                    }`}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={() => setMobileDrawerOpen(false)}
+              className="w-full bg-[#202020] hover:bg-[#282828] text-[#F4F1E8] border-[#2F2F2F] text-xs py-2"
+            >
+              {t("close")}
+            </Button>
           </div>
         </div>
       )}

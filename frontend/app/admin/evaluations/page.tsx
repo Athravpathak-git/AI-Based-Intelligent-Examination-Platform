@@ -53,6 +53,7 @@ export default function AdminEvaluationsPage() {
 
   // Finalize / Publish state
   const [overallRemarks, setOverallRemarks] = useState<string>("");
+  const [evalStatusOverride, setEvalStatusOverride] = useState<string>("PASSED");
   const [isFinalizing, setIsFinalizing] = useState<boolean>(false);
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
 
@@ -87,6 +88,12 @@ export default function AdminEvaluationsPage() {
       const res = await api.get<EvaluationSessionDetailResponse>(`/evaluations/session/${sessionId}`);
       setSessionDetail(res.data);
       setOverallRemarks(res.data.evaluator_remarks || "");
+      const isPassCalc = (res.data.maximum_marks > 0 ? (res.data.current_total_marks / res.data.maximum_marks) : 0) >= 0.5;
+      setEvalStatusOverride(
+        res.data.status === "PASSED" || res.data.status === "FAILED"
+          ? res.data.status
+          : isPassCalc ? "PASSED" : "FAILED"
+      );
       setActiveQuestionIdx(0);
       loadQuestionGradingState(res.data.questions[0]);
     } catch (err) {
@@ -170,7 +177,8 @@ export default function AdminEvaluationsPage() {
     setSuccessMessage(null);
     try {
       const res = await api.post(`/evaluations/session/${selectedSessionId}/finalize`, {
-        evaluator_remarks: overallRemarks.trim() || undefined
+        evaluator_remarks: overallRemarks.trim() || undefined,
+        status: evalStatusOverride
       });
       setSuccessMessage(res.data.message || "Evaluation finalized successfully. Result is Ready for Publication.");
 
@@ -196,7 +204,8 @@ export default function AdminEvaluationsPage() {
     setSuccessMessage(null);
     try {
       const res = await api.post(`/evaluations/session/${selectedSessionId}/publish`, {
-        evaluator_remarks: overallRemarks.trim() || undefined
+        evaluator_remarks: overallRemarks.trim() || undefined,
+        status: evalStatusOverride
       });
       setSuccessMessage(res.data.message || "Result officially published. Candidate can now view their scorecard and download PDF.");
 
@@ -235,701 +244,484 @@ export default function AdminEvaluationsPage() {
   const currentQ = sessionDetail ? sessionDetail.questions[activeQuestionIdx] : null;
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] pb-16">
-      {/* Top Navigation Bar */}
-      <div className="bg-white border-b border-stone-200 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/admin"
-                className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors"
-                title="Return to Admin Dashboard"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-              <div>
-                <h1 className="text-xl font-bold text-[#1C1C1F] flex items-center gap-2">
-                  <Shield className="w-6 h-6 text-[#E06A26]" />
-                  Platform Valuation & Result Publication
-                </h1>
-                <p className="text-xs text-stone-500 font-medium">
-                  Authoritative institutional governance: Grade subjective submissions and publish candidate results
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Link
-                href="/admin/results"
-                className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors border border-stone-200"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-stone-500" />
-                Scorecards & CSV Export
-              </Link>
-            </div>
+    <div className="space-y-6 max-w-7xl mx-auto py-2">
+      {/* Top Navigation Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin"
+            className="p-2 rounded-xl bg-[#0D1322] border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors"
+            title="Return to Admin Dashboard"
+          >
+            <ArrowLeft className="w-5 h-5 text-indigo-400" />
+          </Link>
+          <div>
+            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+              <Award className="w-6 h-6 text-indigo-400" /> Platform Valuation & Grading Governance
+            </h1>
+            <p className="text-xs text-slate-400">
+              Institution-wide authoritative evaluation verification and publication oversight.
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        {/* Metric Badges */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          <Card className="p-4 bg-white border-stone-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Awaiting Valuation</div>
-                <div className="text-2xl font-black text-[#C85332] mt-1">{totalPending}</div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-[#C85332]">
-                <Clock className="w-5 h-5" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 bg-white border-stone-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs font-semibold text-stone-500 uppercase tracking-wider">In Progress</div>
-                <div className="text-2xl font-black text-[#D97706] mt-1">{inProgress}</div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-[#D97706]">
-                <Layers className="w-5 h-5" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 bg-white border-stone-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Ready to Publish</div>
-                <div className="text-2xl font-black text-[#E06A26] mt-1">{readyPublish}</div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-[#FEF3EC] flex items-center justify-center text-[#E06A26]">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 bg-white border-stone-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Published</div>
-                <div className="text-2xl font-black text-[#2B7853] mt-1">{published}</div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-[#2B7853]">
-                <Award className="w-5 h-5" />
-              </div>
-            </div>
-          </Card>
+      {/* Metrics Counters Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-[#0D1322]/80 backdrop-blur-md rounded-2xl border border-slate-800 p-4 space-y-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Awaiting Valuation</span>
+          <div className="text-2xl font-black text-rose-400 font-mono">{totalPending}</div>
+          <p className="text-[10px] text-slate-500">Unassigned / Subjective Submissions</p>
         </div>
 
-        {errorMessage && (
-          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 shrink-0 text-rose-600 mt-0.5" />
-            <div className="flex-1 font-medium">{errorMessage}</div>
-            <button onClick={() => setErrorMessage(null)} className="text-rose-500 hover:text-rose-700">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        <div className="bg-[#0D1322]/80 backdrop-blur-md rounded-2xl border border-slate-800 p-4 space-y-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">In Progress</span>
+          <div className="text-2xl font-black text-amber-400 font-mono">{inProgress}</div>
+          <p className="text-[10px] text-slate-500">Actively Being Reviewed</p>
+        </div>
 
-        {successMessage && (
-          <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600 mt-0.5" />
-            <div className="flex-1 font-medium">{successMessage}</div>
-            <button onClick={() => setSuccessMessage(null)} className="text-emerald-500 hover:text-emerald-700">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        <div className="bg-[#0D1322]/80 backdrop-blur-md rounded-2xl border border-slate-800 p-4 space-y-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ready to Publish</span>
+          <div className="text-2xl font-black text-indigo-400 font-mono">{readyPublish}</div>
+          <p className="text-[10px] text-slate-500">Fully Graded, Awaiting Admin Sign-off</p>
+        </div>
 
-        {/* Valuation Queue Section */}
-        {!selectedSessionId && (
-          <Card className="p-6 bg-white border-stone-200">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-stone-100">
-              <div>
-                <h2 className="text-lg font-bold text-[#1C1C1F]">Institutional Submissions Queue</h2>
-                <p className="text-xs text-stone-500">Platform-wide candidate assessments ready for valuation & publication</p>
+        <div className="bg-[#0D1322]/80 backdrop-blur-md rounded-2xl border border-slate-800 p-4 space-y-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Published Results</span>
+          <div className="text-2xl font-black text-emerald-400 font-mono">{published}</div>
+          <p className="text-[10px] text-slate-500">Officially Declared to Candidates</p>
+        </div>
+      </div>
+
+      {/* Feedback Messages */}
+      {errorMessage && (
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <span>{errorMessage}</span>
+          </div>
+          <button onClick={() => setErrorMessage(null)} className="text-rose-400 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+            <span>{successMessage}</span>
+          </div>
+          <button onClick={() => setSuccessMessage(null)} className="text-emerald-400 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* QUEUE VIEW (If no session selected) */}
+      {!selectedSessionId && (
+        <Card className="p-6 bg-[#0D1322]/80 backdrop-blur-md border-slate-800 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
+            <div>
+              <h2 className="text-base font-bold text-white">Platform Submission Queue</h2>
+              <p className="text-xs text-slate-400">Select any candidate submission to verify valuation or publish results.</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search candidate or exam..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-3 py-1.5 text-xs bg-[#080C14] border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                />
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative">
-                  <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search candidate or exam..."
-                    className="pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 bg-stone-50 text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#E06A26]/40 w-48 sm:w-64"
-                  />
+              <div className="flex items-center p-0.5 bg-[#080C14] rounded-xl border border-slate-800 text-xs font-semibold">
+                {[
+                  { key: "ALL", label: "All" },
+                  { key: "PENDING", label: "Pending Sign-off" },
+                  { key: "READY_FOR_PUBLICATION", label: "Ready to Publish" },
+                  { key: "PUBLISHED", label: "Published" }
+                ].map((btn) => (
+                  <button
+                    key={btn.key}
+                    type="button"
+                    onClick={() => setStatusFilter(btn.key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      statusFilter === btn.key
+                        ? "bg-indigo-600 text-white shadow-sm font-bold"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="py-16 text-center text-xs text-slate-400">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto mb-2" />
+              Loading submission queue...
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="py-16 text-center text-xs text-slate-500">
+              No submissions matching the selected filter criteria.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                    <th className="py-3 px-4">Candidate</th>
+                    <th className="py-3 px-4">Exam & Subject</th>
+                    <th className="py-3 px-4">Attempt</th>
+                    <th className="py-3 px-4">Submitted At</th>
+                    <th className="py-3 px-4">Progress</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/70">
+                  {filteredItems.map((item) => (
+                    <tr key={item.session_id} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-white">{item.student_name}</div>
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          {item.registration_number || `ID #${item.student_id}`}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="font-semibold text-slate-200">{item.exam_name}</div>
+                        <div className="text-[11px] text-indigo-400 font-mono">{item.subject}</div>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-slate-300">
+                        Attempt #{item.attempt_number}
+                      </td>
+                      <td className="py-3 px-4 text-slate-400 font-mono text-[11px]">
+                        {new Date(item.submitted_at).toLocaleString()}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="w-28 space-y-1">
+                          <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                            <span>{item.evaluated_questions}/{item.total_questions}</span>
+                            <span>{item.progress_percentage}%</span>
+                          </div>
+                          <div className="w-full bg-slate-800 rounded-full h-1 overflow-hidden">
+                            <div
+                              className="bg-indigo-500 h-1 rounded-full transition-all duration-300"
+                              style={{ width: `${item.progress_percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            item.evaluation_status === "PUBLISHED"
+                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              : item.evaluation_status === "READY_FOR_PUBLICATION"
+                              ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                              : item.evaluation_status === "EVALUATION_IN_PROGRESS"
+                              ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                              : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                          }`}
+                        >
+                          {item.evaluation_status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => openValuationWorkspace(item.session_id)}
+                          className="text-xs shadow-sm"
+                        >
+                          Open Review &rarr;
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ACTIVE VALUATION WORKSPACE VIEW */}
+      {selectedSessionId && sessionDetail && (
+        <div className="space-y-6">
+          {/* Header Card */}
+          <Card className="p-6 bg-[#0D1322]/80 backdrop-blur-md border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <button
+                  onClick={() => {
+                    setSelectedSessionId(null);
+                    setSessionDetail(null);
+                  }}
+                  className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 mb-2 transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Back to Queue
+                </button>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-bold text-white">{sessionDetail.student_name}</h2>
+                  <span className="font-mono text-xs font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                    {sessionDetail.registration_number || "REG-UNASSIGNED"}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-3">
+                  <span><strong>Exam:</strong> {sessionDetail.exam_name} ({sessionDetail.subject})</span>
+                  <span>&bull;</span>
+                  <span><strong>Attempt:</strong> #{sessionDetail.attempt_number}</span>
+                  <span>&bull;</span>
+                  <span><strong>Submitted:</strong> {new Date(sessionDetail.submitted_at).toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 text-right">
+                <div className="bg-[#080C14] px-4 py-2 rounded-xl border border-slate-800">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Current Score</span>
+                  <span className="text-xl font-extrabold text-white font-mono">
+                    {sessionDetail.current_total_marks.toFixed(1)} / {sessionDetail.maximum_marks}
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-semibold">
-                  {["ALL", "AWAITING_SUBJECTIVE_EVALUATION", "EVALUATION_IN_PROGRESS", "READY_FOR_PUBLICATION", "PUBLISHED"].map((st) => (
-                    <button
-                      key={st}
-                      onClick={() => setStatusFilter(st)}
-                      className={`px-3 py-1.5 rounded-lg transition-all ${
-                        statusFilter === st ? "bg-white text-[#1C1C1F] shadow-xs font-bold" : "text-stone-600 hover:text-stone-900"
-                      }`}
-                    >
-                      {st === "ALL" && "All Submissions"}
-                      {st === "AWAITING_SUBJECTIVE_EVALUATION" && "Awaiting Valuation"}
-                      {st === "EVALUATION_IN_PROGRESS" && "In Progress"}
-                      {st === "READY_FOR_PUBLICATION" && "Ready to Publish"}
-                      {st === "PUBLISHED" && "Published"}
-                    </button>
-                  ))}
+                <div className="bg-[#080C14] px-4 py-2 rounded-xl border border-slate-800 text-center min-w-[120px]">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Status</span>
+                  <span className="text-xs font-bold text-indigo-400 font-mono">
+                    {sessionDetail.is_published ? "PUBLISHED" : sessionDetail.is_finalized ? "READY TO PUBLISH" : "IN REVIEW"}
+                  </span>
                 </div>
               </div>
             </div>
-
-            {/* Queue Table */}
-            {isLoading ? (
-              <div className="py-20 text-center text-stone-400 text-sm">
-                <div className="animate-spin w-8 h-8 border-2 border-[#E06A26] border-t-transparent rounded-full mx-auto mb-3" />
-                Loading evaluation queue...
-              </div>
-            ) : filteredItems.length === 0 ? (
-              <div className="py-16 text-center text-stone-400 text-sm">
-                <CheckCircle2 className="w-10 h-10 text-stone-300 mx-auto mb-2" />
-                No submissions matching current filter criteria.
-              </div>
-            ) : (
-              <div className="overflow-x-auto mt-4">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-stone-200 text-stone-400 font-bold uppercase tracking-wider text-[10px]">
-                      <th className="py-3 px-4">Candidate</th>
-                      <th className="py-3 px-4">Exam & Subject</th>
-                      <th className="py-3 px-4">Attempt #</th>
-                      <th className="py-3 px-4">Submitted At</th>
-                      <th className="py-3 px-4">Evaluation Progress</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100">
-                    {filteredItems.map((item) => (
-                      <tr key={item.session_id} className="hover:bg-stone-50/80 transition-colors">
-                        <td className="py-3.5 px-4">
-                          <div className="font-bold text-[#1C1C1F]">{item.student_name}</div>
-                          <div className="text-[11px] text-stone-400 font-mono">
-                            {item.registration_number || `Student ID #${item.student_id}`}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="font-semibold text-stone-800">{item.exam_name}</div>
-                          <div className="text-[11px] text-stone-400">{item.subject}</div>
-                        </td>
-                        <td className="py-3.5 px-4 font-semibold text-stone-700">
-                          Attempt {item.attempt_number}
-                        </td>
-                        <td className="py-3.5 px-4 text-stone-500 font-mono text-[11px]">
-                          {new Date(item.submitted_at).toLocaleString()}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="w-36">
-                            <div className="flex items-center justify-between text-[10px] font-semibold text-stone-600 mb-1">
-                              <span>{item.evaluated_questions}/{item.total_questions} Evaluated</span>
-                              <span>{item.progress_percentage}%</span>
-                            </div>
-                            <div className="w-full bg-stone-200 rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className={`h-full transition-all duration-300 ${
-                                  item.progress_percentage === 100 ? "bg-[#2B7853]" : "bg-[#E06A26]"
-                                }`}
-                                style={{ width: `${item.progress_percentage}%` }}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          {item.evaluation_status === "PUBLISHED" && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-[#2B7853] border border-emerald-200">
-                              <CheckCircle2 className="w-3 h-3" /> Published
-                            </span>
-                          )}
-                          {item.evaluation_status === "READY_FOR_PUBLICATION" && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#FEF3EC] text-[#E06A26] border border-[#FAD9C5]">
-                              <Check className="w-3 h-3" /> Ready to Publish
-                            </span>
-                          )}
-                          {item.evaluation_status === "EVALUATION_IN_PROGRESS" && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-[#D97706] border border-amber-200">
-                              <Clock className="w-3 h-3" /> In Progress
-                            </span>
-                          )}
-                          {item.evaluation_status === "AWAITING_SUBJECTIVE_EVALUATION" && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-[#C85332] border border-rose-200">
-                              <AlertCircle className="w-3 h-3" /> Awaiting Valuation
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <button
-                            onClick={() => openValuationWorkspace(item.session_id)}
-                            className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-[#1C1C1F] hover:bg-[#25252A] text-white transition-all shadow-xs"
-                          >
-                            <Eye className="w-3.5 h-3.5 text-[#E06A26]" />
-                            Evaluate
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </Card>
-        )}
 
-        {/* Valuation Workspace View */}
-        {selectedSessionId && sessionDetail && (
-          <div className="space-y-6">
-            {/* Candidate & Session Header Card */}
-            <Card className="p-6 bg-white border-stone-200">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                <div>
-                  <button
-                    onClick={() => {
-                      setSelectedSessionId(null);
-                      setSessionDetail(null);
-                    }}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-stone-500 hover:text-stone-900 mb-2"
-                  >
-                    <ChevronLeft className="w-4 h-4" /> Back to Queue
-                  </button>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h2 className="text-xl font-bold text-[#1C1C1F]">{sessionDetail.student_name}</h2>
-                    {sessionDetail.registration_number && (
-                      <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-lg bg-stone-100 text-stone-700 border border-stone-200">
-                        {sessionDetail.registration_number}
+          {/* Split Workspace Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Palette */}
+            <div className="lg:col-span-3">
+              <Card className="p-4 bg-[#0D1322]/80 backdrop-blur-md border-slate-800 sticky top-24 space-y-3">
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Question Palette
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {sessionDetail.questions.map((q, idx) => {
+                    const isEval = q.is_evaluated || q.marks_awarded !== null;
+                    const isCurrent = idx === activeQuestionIdx;
+                    return (
+                      <button
+                        key={q.question_id}
+                        onClick={() => selectQuestion(idx)}
+                        className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center transition-all ${
+                          isCurrent
+                            ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-[#0D1322] scale-105 z-10"
+                            : ""
+                        } ${
+                          isEval
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30"
+                            : "bg-[#080C14] text-amber-300 hover:bg-slate-800 border border-amber-500/30"
+                        }`}
+                      >
+                        {idx + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Card>
+            </div>
+
+            {/* Active Question Panel */}
+            <div className="lg:col-span-9 space-y-6">
+              {currentQ && (
+                <Card className="p-6 bg-[#0D1322]/80 backdrop-blur-md border-slate-800 space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-white text-base">Question #{activeQuestionIdx + 1}</span>
+                      <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                        {currentQ.question_type}
                       </span>
-                    )}
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#FEF3EC] text-[#E06A26] border border-[#FAD9C5]">
-                      Attempt #{sessionDetail.attempt_number}
+                    </div>
+                    <span className="text-xs font-bold text-indigo-400 font-mono bg-[#080C14] px-3 py-1 rounded-xl border border-slate-800">
+                      Max Pts: {currentQ.marks_possible}
                     </span>
                   </div>
-                  <div className="text-xs text-stone-500 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-                    <span><strong>Exam:</strong> {sessionDetail.exam_name}</span>
-                    <span><strong>Subject:</strong> {sessionDetail.subject}</span>
-                    <span><strong>Submitted:</strong> {new Date(sessionDetail.submitted_at).toLocaleString()}</span>
-                  </div>
-                </div>
 
-                {/* Score & Progress Summary */}
-                <div className="flex flex-wrap items-center gap-4 border-t lg:border-t-0 pt-4 lg:pt-0 border-stone-100">
-                  <div className="text-right">
-                    <div className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">Current Score</div>
-                    <div className="text-2xl font-black text-[#1C1C1F]">
-                      {sessionDetail.current_total_marks.toFixed(1)}{" "}
-                      <span className="text-sm font-semibold text-stone-400">/ {sessionDetail.maximum_marks}</span>
-                    </div>
+                  <div className="text-sm text-slate-200 font-medium leading-relaxed whitespace-pre-wrap">
+                    {currentQ.question_text}
                   </div>
 
-                  <div className="w-px h-10 bg-stone-200 hidden sm:block" />
-
-                  <div className="text-right">
-                    <div className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">Status</div>
-                    <div>
-                      {sessionDetail.is_published ? (
-                        <Badge variant="success" className="font-bold">Published</Badge>
-                      ) : sessionDetail.is_finalized ? (
-                        <Badge variant="terracotta" className="font-bold">Ready to Publish</Badge>
-                      ) : (
-                        <Badge variant="slate" className="font-bold">Valuation In Progress</Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="mt-6 pt-4 border-t border-stone-100">
-                <div className="flex items-center justify-between text-xs font-semibold text-stone-600 mb-1.5">
-                  <span>Valuation Progress: {sessionDetail.evaluated_questions} of {sessionDetail.total_questions} Questions Evaluated</span>
-                  <span>{sessionDetail.progress_percentage}%</span>
-                </div>
-                <div className="w-full bg-stone-200 rounded-full h-2 overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-300 ${
-                      sessionDetail.progress_percentage === 100 ? "bg-[#2B7853]" : "bg-[#E06A26]"
-                    }`}
-                    style={{ width: `${sessionDetail.progress_percentage}%` }}
-                  />
-                </div>
-              </div>
-            </Card>
-
-            {/* Split Workspace: Left Palette + Right Active Question */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Question Navigation Palette */}
-              <div className="lg:col-span-3">
-                <Card className="p-4 bg-white border-stone-200 sticky top-24">
-                  <div className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">
-                    Question Palette
-                  </div>
-                  <div className="grid grid-cols-5 gap-2">
-                    {sessionDetail.questions.map((q, idx) => {
-                      const isEval = q.is_evaluated || q.marks_awarded !== null;
-                      const isCurrent = idx === activeQuestionIdx;
-                      return (
-                        <button
-                          key={q.question_id}
-                          onClick={() => selectQuestion(idx)}
-                          className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center transition-all ${
-                            isCurrent
-                              ? "ring-2 ring-[#E06A26] ring-offset-2 scale-105 z-10"
-                              : ""
-                          } ${
-                            isEval
-                              ? "bg-[#2B7853] text-white hover:bg-[#236344]"
-                              : "bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300"
-                          }`}
-                          title={`Question ${idx + 1} (${q.question_type}) - ${isEval ? "Evaluated" : "Pending"}`}
-                        >
-                          {idx + 1}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-6 pt-4 border-t border-stone-100 text-[11px] space-y-2 text-stone-600 font-medium">
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-md bg-[#2B7853]" />
-                      <span>Evaluated</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-md bg-amber-100 border border-amber-300" />
-                      <span>Pending Valuation</span>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-
-              {/* Active Question Panel */}
-              <div className="lg:col-span-9 space-y-6">
-                {currentQ && (
-                  <Card className="p-6 bg-white border-stone-200">
-                    {/* Question Header */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-stone-100">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-extrabold text-[#1C1C1F]">
-                          Question #{activeQuestionIdx + 1}
-                        </span>
-                        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700">
-                          {currentQ.question_type}
-                        </span>
-                        {currentQ.is_evaluated ? (
-                          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#2B7853] border border-emerald-200 flex items-center gap-1">
-                            <Check className="w-3 h-3" /> Evaluated
-                          </span>
-                        ) : (
-                          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-[#D97706] border border-amber-200">
-                            Pending Valuation
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="text-xs font-bold text-stone-600 bg-stone-50 px-3 py-1 rounded-xl border border-stone-200">
-                        Max Marks: <span className="text-[#E06A26] font-black">{currentQ.marks_possible}</span>
-                      </div>
+                  {/* Candidate Answer Box */}
+                  <div className="p-4 rounded-xl bg-[#080C14]/70 border border-slate-800 space-y-2">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Candidate Response</span>
+                    <div className="text-xs font-mono text-slate-100 whitespace-pre-wrap bg-[#0D1322] p-3 rounded-lg border border-slate-800">
+                      {currentQ.student_text_answer || <span className="text-slate-500 italic">No text submission provided</span>}
                     </div>
 
-                    {/* Question Statement */}
-                    <div className="py-4">
-                      <div className="text-sm text-stone-900 leading-relaxed font-medium whitespace-pre-wrap">
-                        {currentQ.question_text}
-                      </div>
-                    </div>
-
-                    {/* Candidate's Response Box */}
-                    <div className="mt-4 p-5 rounded-2xl bg-[#FAF8F5] border border-stone-200">
-                      <div className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-                        <span>Candidate's Response</span>
-                        {currentQ.student_text_answer && (
-                          <span className="text-[11px] font-mono font-semibold text-stone-500">
-                            Words: {currentQ.student_text_answer.trim().split(/\s+/).filter(Boolean).length}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Text Answers */}
-                      {(currentQ.question_type === "SHORT_ANSWER" || currentQ.question_type === "LONG_ANSWER") && (
-                        <div className="text-xs sm:text-sm text-stone-900 leading-relaxed font-normal bg-white p-4 rounded-xl border border-stone-200 whitespace-pre-wrap">
-                          {currentQ.student_text_answer || (
-                            <span className="text-stone-400 italic">No text answer provided by candidate.</span>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Objective (MCQ / MULTI_SELECT) */}
-                      {(currentQ.question_type === "MCQ" || currentQ.question_type === "MULTI_SELECT") && (
-                        <div className="space-y-2">
-                          <div className="text-xs font-semibold text-stone-700">
-                            Automated Objective Grading Result:
-                          </div>
-                          <div className="text-xs p-3 rounded-xl bg-white border border-stone-200 space-y-1">
-                            <div>
-                              <strong>Selected Option IDs:</strong>{" "}
-                              {currentQ.selected_option_ids?.join(", ") || "None"}
-                            </div>
-                            <div>
-                              <strong>Correct Option IDs:</strong>{" "}
-                              {currentQ.correct_option_ids?.join(", ") || "None"}
-                            </div>
-                            <div className="font-bold text-[#2B7853]">
-                              Auto Awarded: {currentQ.marks_awarded} / {currentQ.marks_possible} marks
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Handwritten Image Answer */}
-                      {currentQ.question_type === "IMAGE_UPLOAD" && (
-                        <div className="space-y-4">
-                          {currentQ.image_path ? (
-                            <div>
-                              <div className="relative group inline-block rounded-2xl overflow-hidden border border-stone-200 bg-white">
-                                <img
-                                  src={currentQ.image_path}
-                                  alt="Candidate Handwritten Answer"
-                                  className="max-h-64 object-contain rounded-xl cursor-pointer hover:opacity-95 transition-opacity"
-                                  onClick={() => setZoomedImage(currentQ.image_path || null)}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setZoomedImage(currentQ.image_path || null)}
-                                  className="absolute bottom-3 right-3 p-2 bg-stone-900/80 text-white rounded-xl text-xs flex items-center gap-1 backdrop-blur-xs hover:bg-stone-900"
-                                >
-                                  <Maximize2 className="w-3.5 h-3.5" /> Full Zoom
-                                </button>
-                              </div>
-
-                              {/* OCR Extraction Box */}
-                              {currentQ.ocr_text && (
-                                <div className="mt-4 p-4 rounded-xl bg-white border border-stone-200">
-                                  <div className="text-[11px] font-bold text-[#E06A26] uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                    <Sparkles className="w-3.5 h-3.5" /> Extracted Handwritten Text via OCR
-                                  </div>
-                                  <div className="text-xs text-stone-800 whitespace-pre-wrap font-mono leading-relaxed bg-stone-50 p-3 rounded-lg border border-stone-100">
-                                    {currentQ.ocr_text}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-xs text-stone-400 italic bg-white p-4 rounded-xl border border-stone-200">
-                              No handwritten answer image submitted.
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Model Answer / Scheme */}
-                    {currentQ.model_answer && (
-                      <div className="mt-4 p-4 rounded-2xl bg-stone-50 border border-stone-200">
-                        <div className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                          <BookOpen className="w-3.5 h-3.5 text-stone-400" /> Reference Model Answer / Key Points
-                        </div>
-                        <div className="text-xs text-stone-800 leading-relaxed whitespace-pre-wrap">
-                          {currentQ.model_answer}
-                        </div>
+                    {currentQ.image_path && (
+                      <div className="pt-2">
+                        <img
+                          src={currentQ.image_path}
+                          alt="Handwritten Answer"
+                          className="max-h-48 object-contain rounded-lg border border-slate-800 cursor-pointer"
+                          onClick={() => setZoomedImage(currentQ.image_path || null)}
+                        />
                       </div>
                     )}
+                  </div>
 
-                    {/* AI Suggested Grading Card */}
-                    {(currentQ.ai_suggested_marks !== undefined || currentQ.ai_evaluation) && (
-                      <div className="mt-4 p-5 rounded-2xl bg-[#FEF3EC] border border-[#FAD9C5]">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                          <div className="flex items-center gap-2 text-xs font-bold text-[#C95716]">
-                            <Sparkles className="w-4 h-4 text-[#E06A26]" />
-                            AI Recommended Evaluation
-                          </div>
+                  {/* Model Rubric */}
+                  {currentQ.model_answer && (
+                    <div className="p-3 bg-[#080C14]/60 border border-slate-800 rounded-xl text-xs space-y-1">
+                      <span className="font-bold text-slate-400 flex items-center gap-1">
+                        <BookOpen className="w-3.5 h-3.5 text-indigo-400" /> Reference Model Answer Rubric
+                      </span>
+                      <p className="text-slate-300 font-mono whitespace-pre-wrap">{currentQ.model_answer}</p>
+                    </div>
+                  )}
 
-                          <button
-                            type="button"
-                            onClick={handleApplyAiMarks}
-                            className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-[#E06A26] hover:bg-[#C95716] text-white shadow-xs transition-colors"
-                          >
-                            <Check className="w-3.5 h-3.5" /> Apply Suggested Marks (
-                            {currentQ.ai_suggested_marks ?? currentQ.ai_evaluation?.suggested_marks} Marks)
-                          </button>
-                        </div>
-
-                        <div className="text-xs text-stone-700 mt-2 font-medium">
+                  {/* AI Recommendation */}
+                  {(currentQ.ai_suggested_marks !== undefined || currentQ.ai_evaluation) && (
+                    <div className="p-4 rounded-xl bg-indigo-950/20 border border-indigo-500/30 flex items-center justify-between gap-4">
+                      <div>
+                        <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-indigo-400" /> AI Suggested Marks
+                        </span>
+                        <p className="text-xs text-slate-300 mt-1 font-mono">
                           {currentQ.ai_justification || currentQ.ai_evaluation?.justification}
-                        </div>
+                        </p>
                       </div>
-                    )}
-
-                    {/* Authoritative Valuation Input Box */}
-                    <div className="mt-6 pt-6 border-t border-stone-200 bg-stone-50/60 -mx-6 -mb-6 p-6 rounded-b-2xl">
-                      <div className="text-xs font-bold text-stone-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-                        <Award className="w-4 h-4 text-[#E06A26]" /> Authoritative Valuation Input
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
-                        <div className="sm:col-span-4">
-                          <label className="block text-xs font-bold text-stone-700 mb-1">
-                            Marks Awarded (Max: {currentQ.marks_possible})
-                          </label>
-                          <input
-                            type="number"
-                            step="0.5"
-                            min="0"
-                            max={currentQ.marks_possible}
-                            value={marksInput}
-                            onChange={(e) => setMarksInput(e.target.value)}
-                            placeholder="e.g. 4.5"
-                            className="w-full text-base font-black px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#E06A26]"
-                          />
-                        </div>
-
-                        <div className="sm:col-span-8">
-                          <label className="block text-xs font-bold text-stone-700 mb-1">
-                            Evaluator Question Feedback / Annotations
-                          </label>
-                          <input
-                            type="text"
-                            value={feedbackInput}
-                            onChange={(e) => setFeedbackInput(e.target.value)}
-                            placeholder="Specific feedback on this response..."
-                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-stone-300 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#E06A26]"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between mt-4">
-                        <div className="text-xs text-stone-400">
-                          {activeQuestionIdx > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => selectQuestion(activeQuestionIdx - 1)}
-                              className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 font-bold"
-                            >
-                              <ChevronLeft className="w-4 h-4" /> Previous Question
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <Button
-                            type="button"
-                            variant="primary"
-                            size="md"
-                            isLoading={isSavingGrade}
-                            onClick={handleSaveQuestionGrade}
-                            className="gap-2"
-                          >
-                            <Save className="w-4 h-4" /> Save Question Valuation
-                          </Button>
-
-                          {activeQuestionIdx < sessionDetail.questions.length - 1 && (
-                            <button
-                              type="button"
-                              onClick={() => selectQuestion(activeQuestionIdx + 1)}
-                              className="inline-flex items-center gap-1 text-stone-700 hover:text-[#E06A26] text-xs font-bold px-3 py-2 rounded-xl bg-white border border-stone-200 hover:bg-stone-50 transition-colors"
-                            >
-                              Next Question <ChevronRight className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                )}
-
-                {/* Overall Remarks & Finalization Bar */}
-                <Card className="p-6 bg-white border-stone-200">
-                  <h3 className="text-sm font-bold text-[#1C1C1F] mb-2 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-[#E06A26]" /> Official Evaluator Summary Remarks
-                  </h3>
-                  <textarea
-                    rows={3}
-                    value={overallRemarks}
-                    onChange={(e) => setOverallRemarks(e.target.value)}
-                    placeholder="Enter comprehensive evaluator remarks to be printed on the official student result certificate..."
-                    className="w-full text-xs p-3 rounded-xl border border-stone-200 bg-stone-50 text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#E06A26]/40"
-                  />
-
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-4 pt-4 border-t border-stone-100">
-                    <div className="text-xs text-stone-500 font-medium">
-                      {sessionDetail.progress_percentage < 100 ? (
-                        <span className="text-[#C85332] font-bold flex items-center gap-1.5">
-                          <AlertCircle className="w-4 h-4" />
-                          Cannot finalize: {sessionDetail.total_questions - sessionDetail.evaluated_questions} questions still require marks.
-                        </span>
-                      ) : sessionDetail.is_published ? (
-                        <span className="text-[#2B7853] font-bold flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4" />
-                          Result is officially published. Scorecard and certified PDF are active.
-                        </span>
-                      ) : sessionDetail.is_finalized ? (
-                        <span className="text-[#E06A26] font-bold flex items-center gap-1.5">
-                          <Check className="w-4 h-4" />
-                          Valuation is finalized and Ready for Official Publication.
-                        </span>
-                      ) : (
-                        <span className="text-stone-600 font-medium">
-                          All questions evaluated. You can now finalize this assessment.
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {!sessionDetail.is_finalized && (
-                        <Button
-                          variant="secondary"
-                          size="md"
-                          disabled={sessionDetail.progress_percentage < 100 || isFinalizing}
-                          isLoading={isFinalizing}
-                          onClick={handleFinalize}
-                          className="font-bold"
-                        >
-                          Finalize Evaluation
-                        </Button>
-                      )}
-
                       <Button
                         variant="primary"
-                        size="md"
-                        disabled={sessionDetail.progress_percentage < 100 || isPublishing || sessionDetail.is_published}
-                        isLoading={isPublishing}
-                        onClick={handlePublish}
-                        className="gap-2 font-bold"
+                        size="sm"
+                        onClick={handleApplyAiMarks}
+                        className="text-xs font-bold shrink-0"
                       >
-                        <Send className="w-4 h-4" />
-                        {sessionDetail.is_published ? "Result Published" : "Declare & Publish Result"}
+                        Apply AI ({currentQ.ai_suggested_marks ?? currentQ.ai_evaluation?.suggested_marks} pts)
                       </Button>
                     </div>
+                  )}
+
+                  {/* Authoritative Inputs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-3 border-t border-slate-800">
+                    <div className="sm:col-span-4">
+                      <label className="text-xs font-bold text-slate-300 block mb-1">Marks Awarded</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        max={currentQ.marks_possible}
+                        value={marksInput}
+                        onChange={(e) => setMarksInput(e.target.value)}
+                        className="w-full px-3 py-2 text-sm font-bold font-mono bg-[#080C14] border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div className="sm:col-span-8">
+                      <label className="text-xs font-bold text-slate-300 block mb-1">Evaluator Feedback</label>
+                      <input
+                        type="text"
+                        value={feedbackInput}
+                        onChange={(e) => setFeedbackInput(e.target.value)}
+                        placeholder="Feedback on candidate methodology..."
+                        className="w-full px-3 py-2 text-xs bg-[#080C14] border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      isLoading={isSavingGrade}
+                      onClick={handleSaveQuestionGrade}
+                      className="text-xs shadow-md shadow-indigo-500/20"
+                    >
+                      <Save className="w-3.5 h-3.5 mr-1" /> Save Question Marks
+                    </Button>
                   </div>
                 </Card>
-              </div>
+              )}
+
+              {/* Finalization Card */}
+              <Card className="p-6 bg-[#0D1322]/80 backdrop-blur-md border-slate-800 space-y-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-indigo-400" /> Official Summary Remarks
+                </h3>
+                <textarea
+                  rows={2}
+                  value={overallRemarks}
+                  onChange={(e) => setOverallRemarks(e.target.value)}
+                  placeholder="Official comments on performance..."
+                  className="w-full text-xs p-3 rounded-xl border border-slate-800 bg-[#080C14] text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-slate-300">Final Verdict Status:</label>
+                    <select
+                      value={evalStatusOverride}
+                      onChange={(e) => setEvalStatusOverride(e.target.value)}
+                      className="px-3 py-1.5 text-xs border rounded-xl border-slate-800 font-bold text-white bg-[#080C14] focus:ring-1 focus:ring-indigo-500"
+                    >
+                      <option value="PASSED">PASSED</option>
+                      <option value="FAILED">FAILED</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {!sessionDetail.is_finalized && (
+                      <Button
+                        variant="secondary"
+                        size="md"
+                        disabled={sessionDetail.progress_percentage < 100 || isFinalizing}
+                        isLoading={isFinalizing}
+                        onClick={handleFinalize}
+                        className="font-bold border-slate-800 text-slate-200 hover:text-white hover:bg-slate-800/60"
+                      >
+                        Finalize Evaluation
+                      </Button>
+                    )}
+
+                    <Button
+                      variant="primary"
+                      size="md"
+                      disabled={sessionDetail.progress_percentage < 100 || isPublishing || sessionDetail.is_published}
+                      isLoading={isPublishing}
+                      onClick={handlePublish}
+                      className="gap-2 font-bold shadow-lg shadow-indigo-500/20"
+                    >
+                      <Send className="w-4 h-4" />
+                      {sessionDetail.is_published ? "Result Published" : "Declare & Publish Result"}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* High-Resolution Image Zoom Modal */}
       {zoomedImage && (
-        <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="relative max-w-5xl w-full max-h-[90vh] bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-stone-200">
-              <span className="text-xs font-bold text-stone-700">Handwritten Answer Sheet - Full Zoom</span>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="relative max-w-5xl w-full max-h-[90vh] bg-[#0D1322] rounded-2xl overflow-hidden shadow-2xl flex flex-col border border-slate-800">
+            <div className="flex items-center justify-between p-4 border-b border-slate-800">
+              <span className="text-xs font-bold text-white">Handwritten Answer Sheet - Full Zoom</span>
               <button
                 type="button"
                 onClick={() => setZoomedImage(null)}
-                className="p-1.5 rounded-xl hover:bg-stone-100 text-stone-500 hover:text-stone-900"
+                className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-auto p-4 bg-stone-100 flex items-center justify-center">
-              <img src={zoomedImage} alt="Zoomed Answer" className="max-w-full max-h-full object-contain rounded-lg" />
+            <div className="flex-1 overflow-auto p-4 bg-[#080C14] flex items-center justify-center">
+              <img src={zoomedImage} alt="Zoomed Answer" className="max-w-full max-h-full object-contain rounded-lg border border-slate-800" />
             </div>
           </div>
         </div>

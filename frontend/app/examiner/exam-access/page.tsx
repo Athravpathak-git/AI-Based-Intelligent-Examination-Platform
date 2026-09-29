@@ -12,8 +12,8 @@ export default function ExaminerExamAccessRedirect() {
 
   return (
     <div className="flex flex-col items-center justify-center p-12 space-y-4">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#E06A26]"></div>
-      <p className="text-xs text-[#6B6B76]">Redirecting to Examiner Control Center...</p>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#C5A04A]"></div>
+      <p className="text-xs text-[#6B6861]">Redirecting to Examiner Control Center...</p>
     </div>
   );
 }

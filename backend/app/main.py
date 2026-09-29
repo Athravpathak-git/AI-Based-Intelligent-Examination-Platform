@@ -13,6 +13,7 @@ from app.api.exam_access import router as exam_access_router
 from app.api.subjects import router as subjects_router
 from app.api.notifications import router as notifications_router
 from app.api.evaluations import router as evaluations_router
+from app.api.monitoring import router as monitoring_router
 from app.services.expiry_worker import scheduler, background_expiry_loop
 
 @asynccontextmanager
@@ -76,6 +77,7 @@ app.include_router(exam_access_router, prefix=settings.API_V1_STR)
 app.include_router(subjects_router, prefix=settings.API_V1_STR)
 app.include_router(notifications_router, prefix=settings.API_V1_STR)
 app.include_router(evaluations_router, prefix=settings.API_V1_STR)
+app.include_router(monitoring_router, prefix=settings.API_V1_STR)
 # Allow WebSocket endpoints at root level (/ws/sessions/{id}/heartbeat)
 app.include_router(sessions_router)
 

@@ -1,43 +1,66 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function ServiceWorkerRegister() {
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const isDev =
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1" ||
-      window.location.port === "3000" ||
-      process.env.NODE_ENV !== "production";
+    // Check if running as standalone PWA
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
 
-    if (isDev) {
-      // In local development: AGGRESSIVELY unregister any existing service worker
-      // and purge all browser Cache Storage entries so stale webpack chunks cannot persist
-      if ("serviceWorker" in navigator) {
+    if (isStandalone) {
+      setIsInstalled(true);
+    }
+
+    // Register Service Worker in production or when supported
+    if ("serviceWorker" in navigator) {
+      // Avoid service worker interference during hot-reload development
+      if (process.env.NODE_ENV === "development") {
         navigator.serviceWorker.getRegistrations().then((registrations) => {
           for (const registration of registrations) {
             registration.unregister();
           }
         }).catch(() => {});
-      }
-
-      if ("caches" in window) {
-        caches.keys().then((keys) => {
-          for (const key of keys) {
-            caches.delete(key);
-          }
-        }).catch(() => {});
-      }
-    } else {
-      // In production environments: safely register the service worker
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js").catch(() => {
-          // Fail silently in environments where SW is disabled
-        });
+      } else {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((registration) => {
+            // Service worker successfully registered
+          })
+          .catch((error) => {
+            console.warn("ServiceWorker registration failed:", error);
+          });
       }
     }
+
+    // Listen for PWA beforeinstallprompt event
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      (window as any).__pwaInstallPrompt = e;
+      window.dispatchEvent(new CustomEvent("pwa_install_available", { detail: e }));
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+      (window as any).__pwaInstallPrompt = null;
+      window.dispatchEvent(new CustomEvent("pwa_installed"));
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
   }, []);
 
   return null;

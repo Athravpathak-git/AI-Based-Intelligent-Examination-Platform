@@ -78,7 +78,7 @@ export default function ExamInstructionsPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#E06A26]"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#C5A04A]"></div>
       </div>
     );
   }
@@ -89,7 +89,7 @@ export default function ExamInstructionsPage() {
         <Alert type="error">{error || "Examination parameters could not be loaded."}</Alert>
         <Link href="/student">
           <Button variant="outline">
-            <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Dashboard
+            <ArrowLeft className="h-4 w-4 mr-1.5" /> {t("cancel_return_dashboard")}
           </Button>
         </Link>
       </div>
@@ -99,23 +99,15 @@ export default function ExamInstructionsPage() {
   const maxWarnings = exam.maximum_tab_switch_warnings ?? 3;
 
   const rulesList = [
-    "The examination must be taken in a quiet, well-lit private room without unauthorized individuals present.",
-    "Fullscreen mode is mandatory and will be automatically engaged upon beginning the examination attempt.",
-    "Leaving fullscreen or switching browser tabs/windows will immediately trigger an authoritative security violation event.",
-    `If security violations exceed the maximum allowed threshold (${maxWarnings} warnings), the assessment will be automatically submitted immediately without appeal.`,
-    "Do not use shortcut combinations such as Alt+Tab, Cmd+Tab, Ctrl+T, Ctrl+N, Ctrl+W, or inspect browser developer tools (F12).",
-    "Automated proctoring models continuously verify candidate presence, webcam visibility, and detect auxiliary electronic devices.",
-    "Ensure your webcam and audio capture permissions remain active for the entire duration of the session.",
-    "The examination timer is strictly server-authoritative. The countdown starts upon entering the examination environment and will not pause on browser reload.",
-    "When the authoritative countdown reaches 00:00:00, all recorded responses are automatically locked, evaluated, and graded.",
-    "All candidate question responses and selections are synchronized with the PostgreSQL backend in real-time.",
-    "You can navigate freely between questions using the Question Palette and flag ambiguous questions for later review.",
-    "Each question is evaluated based on the authoritative scoring scheme configured for this examination.",
+    t("rule_1"),
+    t("rule_2"),
+    t("rule_3"),
+    t("rule_4"),
+    t("fullscreen_mandatory_rule"),
+    t("fullscreen_warning_rule"),
     exam.negative_marking_enabled
-      ? `Negative marking is ACTIVE: incorrect submissions will incur a deduction of ${exam.negative_mark_value || 0.25} marks.`
-      : "Negative marking is DISABLED for this examination: no penalty points are deducted for incorrect responses.",
-    "Any attempt to tamper with security listeners, spoof network packets, or manipulate local storage will result in immediate disqualification.",
-    "By checking the acknowledgments and proceeding, you certify under institutional honor code that all submitted answers are solely your own work."
+      ? `${t("negative_marking")}: -${exam.negative_mark_value || 0.25} ${t("marks")}`
+      : `${t("negative_marking")}: ${t("disabled_status")}`
   ];
 
   return (
@@ -124,62 +116,62 @@ export default function ExamInstructionsPage() {
       <div className="flex items-center justify-between">
         <Link
           href="/student"
-          className="text-xs font-semibold text-[#6B6B76] hover:text-[#1C1C1F] flex items-center gap-1.5 transition-colors"
+          className="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 transition-colors"
         >
-          <ArrowLeft className="h-4 w-4" /> Cancel & Return to Dashboard
+          <ArrowLeft className="h-4 w-4" /> {t("cancel_return_dashboard")}
         </Link>
-        <Badge variant="saffron">Official Candidate Instructions</Badge>
+        <Badge variant="indigo">{t("official_instructions_badge")}</Badge>
       </div>
 
       {error && <Alert type="error">{error}</Alert>}
 
       {/* Exam Parameters Overview Card */}
-      <div className="p-6 bg-gradient-to-br from-[#1C1C1F] via-[#242428] to-[#171719] text-white border border-[#2F2F36] rounded-3xl shadow-xl space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-5">
+      <div className="p-6 bg-gradient-to-br from-[#0D1322] via-[#131B2E] to-[#0D1322] text-white border border-slate-800 rounded-3xl shadow-2xl space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
           <div>
-            <div className="text-xs font-bold text-[#E06A26] uppercase tracking-wider mb-1">
+            <div className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">
               {exam.subject}
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white">{exam.name}</h1>
-            <p className="text-xs text-[#FAF8F5]/70 mt-1">
-              Exam ID #{exam.id} &bull; Window: {new Date(exam.start_time).toLocaleDateString()}
+            <p className="text-xs text-slate-400 mt-1">
+              {t("exam_id")} #{exam.id} &bull; Window: {new Date(exam.start_time).toLocaleDateString()}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1.5 rounded-xl bg-white/10 text-[#FAF8F5] border border-white/20 text-xs font-bold flex items-center gap-1.5">
-              <Lock className="h-3.5 w-3.5 text-[#E06A26]" /> Secure Proctored Session
+            <span className="px-3 py-1.5 rounded-xl bg-slate-900 text-slate-200 border border-slate-800 text-xs font-bold flex items-center gap-1.5">
+              <Lock className="h-3.5 w-3.5 text-indigo-400" /> {t("secure_proctored_session")}
             </span>
           </div>
         </div>
 
         {/* Dynamic Parameter Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-white/5 p-3 rounded-xl border border-white/10 text-center">
-            <div className="text-[10px] uppercase font-bold text-[#FAF8F5]/60 flex items-center justify-center gap-1">
-              <Clock className="h-3 w-3 text-[#E06A26]" /> {t("duration")}
+          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-center">
+            <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center justify-center gap-1">
+              <Clock className="h-3 w-3 text-indigo-400" /> {t("duration")}
             </div>
             <div className="text-xl font-black text-white mt-0.5">{exam.duration_minutes} {t("minutes")}</div>
           </div>
 
-          <div className="bg-white/5 p-3 rounded-xl border border-white/10 text-center">
-            <div className="text-[10px] uppercase font-bold text-[#FAF8F5]/60 flex items-center justify-center gap-1">
-              <BookOpen className="h-3 w-3 text-[#E06A26]" /> {t("questions")}
+          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-center">
+            <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center justify-center gap-1">
+              <BookOpen className="h-3 w-3 text-indigo-400" /> {t("questions")}
             </div>
             <div className="text-xl font-black text-white mt-0.5">{exam.total_questions} Qs</div>
           </div>
 
-          <div className="bg-white/5 p-3 rounded-xl border border-white/10 text-center">
-            <div className="text-[10px] uppercase font-bold text-[#FAF8F5]/60 flex items-center justify-center gap-1">
-              <Award className="h-3 w-3 text-[#E06A26]" /> {t("total_marks")}
+          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-center">
+            <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center justify-center gap-1">
+              <Award className="h-3 w-3 text-indigo-400" /> {t("total_marks")}
             </div>
-            <div className="text-xl font-black text-white mt-0.5">{exam.maximum_marks} pts</div>
+            <div className="text-xl font-black text-indigo-400 mt-0.5">{exam.maximum_marks} pts</div>
           </div>
 
-          <div className="bg-white/5 p-3 rounded-xl border border-white/10 text-center">
-            <div className="text-[10px] uppercase font-bold text-[#FAF8F5]/60 flex items-center justify-center gap-1">
-              <Award className="h-3 w-3 text-[#D97706]" /> Passing Marks
+          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-center">
+            <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center justify-center gap-1">
+              <Award className="h-3 w-3 text-amber-400" /> {t("passing_marks")}
             </div>
-            <div className="text-xl font-black text-[#D97706] mt-0.5">
+            <div className="text-xl font-black text-amber-400 mt-0.5">
               {exam.passing_marks ?? Math.round(exam.maximum_marks * 0.4)} pts
             </div>
           </div>
@@ -187,124 +179,124 @@ export default function ExamInstructionsPage() {
 
         {/* Dynamic Security & Proctoring Attributes */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
-          <div className="bg-white/5 px-3 py-2 rounded-lg border border-white/10 flex items-center justify-between">
-            <span className="text-[#FAF8F5]/70">Negative Marking:</span>
-            <span className={`font-bold ${exam.negative_marking_enabled ? "text-[#C85332]" : "text-[#2B7853]"}`}>
-              {exam.negative_marking_enabled ? `Active (-${exam.negative_mark_value || 0.25})` : "Disabled"}
+          <div className="bg-slate-900/80 px-3 py-2 rounded-lg border border-slate-800 flex items-center justify-between">
+            <span className="text-slate-400">{t("negative_marking")}:</span>
+            <span className={`font-bold ${exam.negative_marking_enabled ? "text-rose-400" : "text-emerald-400"}`}>
+              {exam.negative_marking_enabled ? `${t("active_status")} (-${exam.negative_mark_value || 0.25})` : t("disabled_status")}
             </span>
           </div>
 
-          <div className="bg-white/5 px-3 py-2 rounded-lg border border-white/10 flex items-center justify-between">
-            <span className="text-[#FAF8F5]/70">Max Violations:</span>
-            <span className="font-bold text-[#D97706]">{maxWarnings} warnings</span>
+          <div className="bg-slate-900/80 px-3 py-2 rounded-lg border border-slate-800 flex items-center justify-between">
+            <span className="text-slate-400">{t("max_violations")}:</span>
+            <span className="font-bold text-amber-400">{maxWarnings} {t("warnings_count")}</span>
           </div>
 
-          <div className="bg-white/5 px-3 py-2 rounded-lg border border-white/10 flex items-center justify-between">
-            <span className="text-[#FAF8F5]/70">Webcam Proctoring:</span>
-            <span className={`font-bold ${exam.webcam_monitoring_enabled ? "text-white" : "text-[#FAF8F5]/70"}`}>
-              {exam.webcam_monitoring_enabled ? "Enforced" : "Optional"}
+          <div className="bg-slate-900/80 px-3 py-2 rounded-lg border border-slate-800 flex items-center justify-between">
+            <span className="text-slate-400">{t("webcam_proctoring")}:</span>
+            <span className={`font-bold ${exam.webcam_monitoring_enabled ? "text-cyan-400" : "text-slate-500"}`}>
+              {exam.webcam_monitoring_enabled ? t("enforced") : t("optional")}
             </span>
           </div>
         </div>
       </div>
 
       {/* 15 Formal Rules Section */}
-      <Card className="p-6 space-y-4 border-[#EAE6DF] bg-white">
-        <div className="flex items-center gap-2 border-b border-[#EAE6DF] pb-3">
-          <div className="h-8 w-8 rounded-lg bg-[#FEF3EC] text-[#E06A26] flex items-center justify-center font-bold">
+      <Card className="p-6 space-y-4">
+        <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+          <div className="h-8 w-8 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-bold">
             <FileText className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-[#1C1C1F]">Examination Code of Conduct & Rules</h2>
-            <p className="text-xs text-[#6B6B76]">Read all 15 rules carefully before confirming your acknowledgment.</p>
+            <h2 className="text-base font-bold text-white">{t("code_of_conduct_title")}</h2>
+            <p className="text-xs text-slate-400">{t("code_of_conduct_subtitle")}</p>
           </div>
         </div>
 
-        <ol className="space-y-2.5 text-xs text-[#6B6B76] list-decimal list-inside pl-1">
+        <ol className="space-y-2.5 text-xs text-slate-300 list-decimal list-inside pl-1">
           {rulesList.map((rule, idx) => (
             <li key={idx} className="leading-relaxed pl-1 py-0.5">
-              <span className="font-medium text-[#1C1C1F]">{rule}</span>
+              <span className="font-medium text-slate-200">{rule}</span>
             </li>
           ))}
         </ol>
       </Card>
 
       {/* Mandatory Checkboxes & Acceptance Card */}
-      <Card className="p-6 space-y-5 border-[#EAE6DF] bg-white shadow-card">
-        <div className="flex items-center gap-2 text-[#E06A26] font-bold text-sm">
-          <ShieldAlert className="h-5 w-5 text-[#E06A26]" />
-          <span>Candidate Mandatory Acknowledgments</span>
+      <Card className="p-6 space-y-5">
+        <div className="flex items-center gap-2 text-white font-bold text-sm">
+          <ShieldAlert className="h-5 w-5 text-indigo-400" />
+          <span>{t("mandatory_acknowledgments")}</span>
         </div>
 
         <div className="space-y-3 pt-1">
           {/* Checkbox 1 */}
           <label
-            className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+            className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
               checkSystem
-                ? "bg-[#FAF8F5] border-[#E06A26] shadow-xs text-[#1C1C1F]"
-                : "bg-white border-[#EAE6DF] text-[#6B6B76] hover:bg-[#FAF8F5]"
+                ? "bg-indigo-950/20 border-indigo-500/40 text-white"
+                : "bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-800/60"
             }`}
           >
             <input
               type="checkbox"
               checked={checkSystem}
               onChange={(e) => setCheckSystem(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-[#E06A26] focus:ring-[#E06A26] rounded cursor-pointer"
+              className="mt-0.5 h-4 w-4 accent-indigo-500 rounded cursor-pointer"
             />
             <span className="text-xs font-semibold leading-snug">
-              1. I have verified my system requirements, webcam operation, and internet connectivity stability.
+              {t("ack_check_1")}
             </span>
           </label>
 
           {/* Checkbox 2 */}
           <label
-            className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+            className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
               checkProctoring
-                ? "bg-[#FAF8F5] border-[#E06A26] shadow-xs text-[#1C1C1F]"
-                : "bg-white border-[#EAE6DF] text-[#6B6B76] hover:bg-[#FAF8F5]"
+                ? "bg-indigo-950/20 border-indigo-500/40 text-white"
+                : "bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-800/60"
             }`}
           >
             <input
               type="checkbox"
               checked={checkProctoring}
               onChange={(e) => setCheckProctoring(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-[#E06A26] focus:ring-[#E06A26] rounded cursor-pointer"
+              className="mt-0.5 h-4 w-4 accent-indigo-500 rounded cursor-pointer"
             />
             <span className="text-xs font-semibold leading-snug">
-              2. I agree to automated proctoring monitoring including webcam feed analysis, fullscreen enforcement, and tab-switch detection throughout the examination.
+              {t("ack_check_2")}
             </span>
           </label>
 
           {/* Checkbox 3 */}
           <label
-            className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+            className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
               checkAutoSubmit
-                ? "bg-[#FAF8F5] border-[#E06A26] shadow-xs text-[#1C1C1F]"
-                : "bg-white border-[#EAE6DF] text-[#6B6B76] hover:bg-[#FAF8F5]"
+                ? "bg-indigo-950/20 border-indigo-500/40 text-white"
+                : "bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-800/60"
             }`}
           >
             <input
               type="checkbox"
               checked={checkAutoSubmit}
               onChange={(e) => setCheckAutoSubmit(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-[#E06A26] focus:ring-[#E06A26] rounded cursor-pointer"
+              className="mt-0.5 h-4 w-4 accent-indigo-500 rounded cursor-pointer"
             />
             <span className="text-xs font-semibold leading-snug">
-              3. I understand that exceeding violation limits ({maxWarnings} warnings) or closing the examination window will result in immediate automatic submission and permanent record.
+              {t("ack_check_3")}
             </span>
           </label>
         </div>
 
         {/* Action Button */}
-        <div className="pt-3 border-t border-[#EAE6DF] flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs">
             {allChecked ? (
-              <span className="text-[#2B7853] font-bold flex items-center gap-1">
-                ✓ All acknowledgments accepted. You may now launch the examination.
+              <span className="text-emerald-400 font-bold flex items-center gap-1">
+                {t("all_acks_accepted")}
               </span>
             ) : (
-              <span className="text-[#D97706] font-medium">
-                Please check all three acknowledgments above to proceed.
+              <span className="text-amber-400 font-medium">
+                {t("please_check_all_acks")}
               </span>
             )}
           </div>
@@ -316,7 +308,7 @@ export default function ExamInstructionsPage() {
             onClick={handleAcceptAndStart}
             variant={allChecked ? "primary" : "outline"}
             size="lg"
-            className="font-bold shadow-saffron/20 uppercase tracking-wider"
+            className="font-bold uppercase tracking-wider"
           >
             <Play className="h-4 w-4 mr-2" /> {t("accept_and_start")}
           </Button>

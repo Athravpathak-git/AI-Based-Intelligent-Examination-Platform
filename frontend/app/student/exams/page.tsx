@@ -65,7 +65,7 @@ export default function StudentExamsPage() {
     setActionLoadingId(examId);
     try {
       await api.post(`/exams/${examId}/register`);
-      addToast("success", "Successfully registered for exam!");
+      addToast("success", t("exam_registered_toast"));
       setExams((prev) =>
         prev.map((e) => (e.id === examId ? { ...e, is_registered: true } : e))
       );
@@ -86,12 +86,12 @@ export default function StudentExamsPage() {
     const end = new Date(endTime);
 
     if (now < start) {
-      return { label: "Upcoming", variant: "amber" as const, canStart: false, isClosed: false };
+      return { labelKey: "upcoming", variant: "amber" as const, canStart: false, isClosed: false };
     }
     if (now > end) {
-      return { label: "Closed", variant: "slate" as const, canStart: false, isClosed: true };
+      return { labelKey: "closed", variant: "slate" as const, canStart: false, isClosed: true };
     }
-    return { label: "Live Window", variant: "emerald" as const, canStart: true, isClosed: false };
+    return { labelKey: "live_window", variant: "emerald" as const, canStart: true, isClosed: false };
   };
 
   const formatDateTime = (dateStr: string) => {
@@ -126,18 +126,18 @@ export default function StudentExamsPage() {
       <ToastContainer toasts={toasts} onDismiss={(id: string) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#EAE6DF]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-[#1C1C1F] tracking-tight">
-            My Assessments & Scheduled Exams
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+            {t("my_exams_title")}
           </h1>
-          <p className="text-xs sm:text-sm text-[#6B6B76] mt-1">
-            Access your registered examinations, review schedules, and take AI-proctored tests.
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            {t("my_exams_subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={fetchExams}>
-            Refresh Schedules
+            {t("refresh")}
           </Button>
         </div>
       </div>
@@ -149,10 +149,10 @@ export default function StudentExamsPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <Tabs
             tabs={[
-              { id: "all", label: "All Exams", count: exams.length },
-              { id: "registered", label: "Registered", count: exams.filter((e) => e.is_registered && !e.is_completed).length },
-              { id: "available", label: "Available", count: exams.filter((e) => !e.is_registered && !e.is_completed).length },
-              { id: "completed", label: "Completed", count: exams.filter((e) => e.is_completed).length },
+              { id: "all", label: t("all_exams"), count: exams.length },
+              { id: "registered", label: t("registered_badge"), count: exams.filter((e) => e.is_registered && !e.is_completed).length },
+              { id: "available", label: t("available_exams"), count: exams.filter((e) => !e.is_registered && !e.is_completed).length },
+              { id: "completed", label: t("completed_exams"), count: exams.filter((e) => e.is_completed).length },
             ]}
             activeTab={activeTab}
             onChange={(tab) => setActiveTab(tab as any)}
@@ -162,7 +162,7 @@ export default function StudentExamsPage() {
           <SearchInput
             value={searchQuery}
             onChange={setSearchQuery}
-            placeholder="Search by exam name or subject..."
+            placeholder={t("search_exams_placeholder")}
           />
         </div>
       </div>
@@ -171,19 +171,19 @@ export default function StudentExamsPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse h-56 bg-white flex items-center justify-center">
-              <span className="text-xs text-[#6B6B76]">Loading examination details...</span>
+            <Card key={i} className="animate-pulse h-56 flex items-center justify-center">
+              <span className="text-xs text-slate-400">{t("loading")}</span>
             </Card>
           ))}
         </div>
       ) : filteredExams.length === 0 ? (
         <EmptyState
-          title="No Examinations Found"
-          description="There are currently no examinations matching your selected filter criteria."
+          title={t("no_exams_found")}
+          description={t("no_exams_match_filter")}
           icon={Calendar}
           action={
             <Button variant="outline" size="sm" onClick={() => { setActiveTab("all"); setSearchQuery(""); }}>
-              Reset Filters
+              {t("reset_filters")}
             </Button>
           }
         />
@@ -192,47 +192,47 @@ export default function StudentExamsPage() {
           {filteredExams.map((exam) => {
             const windowStatus = getWindowStatus(exam.start_time, exam.end_time);
             return (
-              <Card key={exam.id} className="flex flex-col justify-between hover:border-[#E06A26]/50 transition-all">
+              <Card key={exam.id} className="flex flex-col justify-between hover:border-indigo-500/40 transition-all">
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <Badge variant={windowStatus.variant}>{windowStatus.label}</Badge>
+                    <Badge variant={windowStatus.variant}>{t(windowStatus.labelKey)}</Badge>
                     <div className="flex items-center gap-1.5">
-                      {exam.is_registered && <Badge variant="saffron">Registered</Badge>}
-                      {exam.is_completed && <Badge variant="emerald">Completed</Badge>}
+                      {exam.is_registered && <Badge variant="emerald">{t("registered_badge")}</Badge>}
+                      {exam.is_completed && <Badge variant="indigo">{t("completed_exams")}</Badge>}
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="font-bold text-base text-[#1C1C1F] group-hover:text-[#E06A26] transition-colors">
+                    <h3 className="font-bold text-base text-white group-hover:text-indigo-400 transition-colors">
                       {exam.name}
                     </h3>
-                    <p className="text-xs text-[#6B6B76] font-medium mt-0.5">{exam.subject}</p>
+                    <p className="text-xs text-indigo-400 font-medium mt-0.5">{exam.subject}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 py-2 border-y border-[#EAE6DF] text-xs">
-                    <div className="flex items-center gap-1.5 text-[#6B6B76]">
-                      <Clock className="h-3.5 w-3.5 text-[#E06A26]" />
-                      <span>{exam.duration_minutes} Mins</span>
+                  <div className="grid grid-cols-2 gap-2 py-2 border-y border-slate-800 text-xs">
+                    <div className="flex items-center gap-1.5 text-slate-400">
+                      <Clock className="h-3.5 w-3.5 text-indigo-400" />
+                      <span className="text-slate-200">{exam.duration_minutes} {t("minutes")}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[#6B6B76]">
-                      <FileText className="h-3.5 w-3.5 text-[#E06A26]" />
-                      <span>{exam.total_questions} Questions</span>
+                    <div className="flex items-center gap-1.5 text-slate-400">
+                      <FileText className="h-3.5 w-3.5 text-indigo-400" />
+                      <span className="text-slate-200">{exam.total_questions} {t("questions")}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[#6B6B76]">
-                      <Sparkles className="h-3.5 w-3.5 text-[#E06A26]" />
-                      <span>{exam.maximum_marks} Marks</span>
+                    <div className="flex items-center gap-1.5 text-slate-400">
+                      <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                      <span className="text-slate-200">{exam.maximum_marks} {t("marks")}</span>
                     </div>
                     {exam.webcam_monitoring_enabled && (
-                      <div className="flex items-center gap-1.5 text-[#2B7853] font-semibold">
+                      <div className="flex items-center gap-1.5 text-cyan-400 font-semibold">
                         <Video className="h-3.5 w-3.5" />
-                        <span>AI Proctoring</span>
+                        <span>{t("proctored")}</span>
                       </div>
                     )}
                   </div>
 
-                  <div className="space-y-1 text-[11px] text-[#6B6B76]">
-                    <div>Start: <span className="font-medium text-[#1C1C1F]">{formatDateTime(exam.start_time)}</span></div>
-                    <div>End: <span className="font-medium text-[#1C1C1F]">{formatDateTime(exam.end_time)}</span></div>
+                  <div className="space-y-1 text-[11px] text-slate-400">
+                    <div>{t("start_window")} <span className="font-medium text-slate-200">{formatDateTime(exam.start_time)}</span></div>
+                    <div>{t("end_window")} <span className="font-medium text-slate-200">{formatDateTime(exam.end_time)}</span></div>
                   </div>
                 </div>
 
@@ -240,7 +240,7 @@ export default function StudentExamsPage() {
                   {exam.is_completed ? (
                     <Link href={`/student/results?exam_id=${exam.id}`} className="block">
                       <Button variant="outline" size="sm" className="w-full">
-                        View Assessment Result
+                        {t("view_result")}
                       </Button>
                     </Link>
                   ) : !exam.is_registered ? (
@@ -252,17 +252,17 @@ export default function StudentExamsPage() {
                       onClick={() => handleRegister(exam.id)}
                       disabled={windowStatus.isClosed}
                     >
-                      Register for Exam
+                      {t("register_exam")}
                     </Button>
                   ) : windowStatus.canStart ? (
                     <Link href={`/student/exams/${exam.id}/instructions`} className="block">
-                      <Button variant="saffron" size="sm" className="w-full gap-2">
-                        <Play className="h-3.5 w-3.5" /> Enter Examination
+                      <Button variant="primary" size="sm" className="w-full gap-2">
+                        <Play className="h-3.5 w-3.5" /> {t("start_exam")}
                       </Button>
                     </Link>
                   ) : (
                     <Button variant="outline" size="sm" className="w-full" disabled>
-                      {windowStatus.isClosed ? "Exam Window Closed" : "Exam Not Started Yet"}
+                      {windowStatus.isClosed ? t("closed") : t("upcoming")}
                     </Button>
                   )}
                 </div>

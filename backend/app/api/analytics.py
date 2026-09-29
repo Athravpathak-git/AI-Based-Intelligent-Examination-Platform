@@ -59,8 +59,8 @@ def api_get_student_analytics(
         "total_attempts": total_attempts,
         "average_score": avg_score,
         "best_score": best_score,
-        "passed_exams": sum(1 for r in results if r.percentage >= 50.0),
-        "failed_exams": sum(1 for r in results if r.percentage < 50.0),
+        "passed_exams": sum(1 for r in results if (r.status == "PASSED" if r.status in ["PASSED", "FAILED"] else r.percentage >= 50.0)),
+        "failed_exams": sum(1 for r in results if (r.status == "FAILED" if r.status in ["PASSED", "FAILED"] else r.percentage < 50.0)),
         "subject_breakdown": subject_breakdown,
         "history": history
     }

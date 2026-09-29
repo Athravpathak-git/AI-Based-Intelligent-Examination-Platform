@@ -10,7 +10,8 @@ from app.schemas.subject import SubjectCreate, SubjectUpdate, SubjectResponse
 
 router = APIRouter(prefix="/subjects", tags=["Subject Management"])
 
-@router.get("/", response_model=List[SubjectResponse])
+@router.get("", response_model=List[SubjectResponse])
+@router.get("/", response_model=List[SubjectResponse], include_in_schema=False)
 def list_subjects(
     active_only: bool = Query(True),
     search: Optional[str] = Query(None),
@@ -29,7 +30,8 @@ def list_subjects(
 
     return query.order_by(Subject.name.asc()).all()
 
-@router.post("/", response_model=SubjectResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=SubjectResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=SubjectResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 def create_subject(
     subject_in: SubjectCreate,
     db: Session = Depends(get_db),

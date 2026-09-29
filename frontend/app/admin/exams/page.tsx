@@ -1,7 +1,8 @@
 "use client";
 
-import ExaminerExamsPage from "@/app/examiner/exams/page";
+import React from "react";
+import ExaminerExamsWorkspace from "@/components/ExaminerExamsWorkspace";
 
 export default function AdminExamsPage() {
-  return <ExaminerExamsPage />;
+  return <ExaminerExamsWorkspace />;
 }

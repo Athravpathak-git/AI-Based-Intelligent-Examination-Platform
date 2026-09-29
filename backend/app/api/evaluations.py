@@ -240,6 +240,7 @@ def api_get_evaluation_session(
         evaluated_questions=evaluated_count,
         progress_percentage=prog,
         current_total_marks=running_total,
+        status=result.status if result else None,
         questions=breakdown
     )
 
@@ -351,10 +352,13 @@ def api_finalize_session_evaluation(
         )
 
     remarks = fin_in.evaluator_remarks if fin_in else None
+    status_override = fin_in.status if fin_in and fin_in.status in ["PASSED", "FAILED"] else None
     now = datetime.now(timezone.utc)
     result = db.query(Result).filter(Result.session_id == session_id).first()
+    percentage = round((total_marks_accumulated / exam.maximum_marks) * 100, 2) if exam.maximum_marks > 0 else 0.0
+
     if not result:
-        percentage = round((total_marks_accumulated / exam.maximum_marks) * 100, 2) if exam.maximum_marks > 0 else 0.0
+        res_status = status_override if status_override else ("PASSED" if percentage >= 50.0 else "FAILED")
         result = Result(
             exam_id=exam.id,
             student_id=session.student_id,
@@ -362,7 +366,7 @@ def api_finalize_session_evaluation(
             total_marks=total_marks_accumulated,
             maximum_marks=exam.maximum_marks,
             percentage=percentage,
-            status="PASSED" if percentage >= 50.0 else "FAILED",
+            status=res_status,
             evaluation_status="READY_FOR_PUBLICATION",
             evaluation_finalized_at=now,
             evaluated_by_id=current_user.id,
@@ -370,10 +374,14 @@ def api_finalize_session_evaluation(
         )
         db.add(result)
     else:
-        percentage = round((total_marks_accumulated / exam.maximum_marks) * 100, 2) if exam.maximum_marks > 0 else 0.0
         result.total_marks = total_marks_accumulated
         result.percentage = percentage
-        result.status = "PASSED" if percentage >= 50.0 else "FAILED"
+        if status_override:
+            result.status = status_override
+        elif result.status in ["PASSED", "FAILED"]:
+            pass  # preserve explicit authoritative examiner status
+        else:
+            result.status = "PASSED" if percentage >= 50.0 else "FAILED"
         result.evaluation_status = "READY_FOR_PUBLICATION"
         result.evaluation_finalized_at = now
         result.evaluated_by_id = current_user.id
@@ -444,7 +452,9 @@ def api_publish_session_result(
     passed = percentage >= 50.0
 
     pub_remarks = pub_in.evaluator_remarks if pub_in else None
+    pub_status_override = pub_in.status if pub_in and pub_in.status in ["PASSED", "FAILED"] else None
     if not result:
+        res_status = pub_status_override if pub_status_override else ("PASSED" if passed else "FAILED")
         result = Result(
             exam_id=exam.id,
             student_id=session.student_id,
@@ -452,7 +462,7 @@ def api_publish_session_result(
             total_marks=total_marks_accumulated,
             maximum_marks=exam.maximum_marks,
             percentage=percentage,
-            status="PASSED" if passed else "FAILED",
+            status=res_status,
             evaluation_status="PUBLISHED",
             evaluation_finalized_at=now,
             result_published_at=now,
@@ -463,7 +473,12 @@ def api_publish_session_result(
     else:
         result.total_marks = total_marks_accumulated
         result.percentage = percentage
-        result.status = "PASSED" if passed else "FAILED"
+        if pub_status_override:
+            result.status = pub_status_override
+        elif result.status in ["PASSED", "FAILED"]:
+            pass  # preserve explicit authoritative examiner status
+        else:
+            result.status = "PASSED" if passed else "FAILED"
         result.evaluation_status = "PUBLISHED"
         if not result.evaluation_finalized_at:
             result.evaluation_finalized_at = now

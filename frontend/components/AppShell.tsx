@@ -26,7 +26,8 @@ import {
   FileSpreadsheet,
   TrendingUp,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Eye
 } from "lucide-react";
 
 interface AppShellProps {
@@ -136,7 +137,7 @@ export default function AppShell({ children }: AppShellProps) {
     return <>{children}</>;
   }
 
-  // 2. Public / Unauthenticated routes: Clean Warm Ivory top Navbar + centered container
+  // 2. Public / Unauthenticated routes: Clean Deep Obsidian top Navbar + container
   const isPublicPage =
     pathname === "/" ||
     pathname === "/login" ||
@@ -146,16 +147,16 @@ export default function AppShell({ children }: AppShellProps) {
 
   if (!user || isPublicPage) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#FAF8F5]">
-        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE6DF] shadow-xs">
+      <div className="min-h-screen flex flex-col bg-[#080C14] text-slate-100 bg-tech-grid">
+        <header className="sticky top-0 z-40 bg-[#090D16]/90 backdrop-blur-md border-b border-slate-800/80 shadow-md shadow-black/30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             {/* Brand */}
             <Link href="/" className="flex items-center gap-2.5 font-bold text-lg hover:opacity-95 transition-opacity">
-              <div className="p-2 bg-[#E06A26] text-white rounded-xl shadow-xs border border-[#C95716]">
-                <GraduationCap className="h-5 w-5 text-[#FAF8F5]" />
+              <div className="p-2 bg-gradient-to-tr from-indigo-600 to-cyan-500 text-white rounded-xl shadow-md shadow-indigo-500/25 border border-indigo-400/30">
+                <GraduationCap className="h-5 w-5" />
               </div>
-              <span className="tracking-tight text-[#1C1C1F] font-extrabold text-lg">
-                Intelli<span className="text-[#E06A26]">ExamAI</span>
+              <span className="tracking-tight text-white font-extrabold text-lg">
+                Intelli<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">ExamAI</span>
               </span>
             </Link>
 
@@ -164,17 +165,17 @@ export default function AppShell({ children }: AppShellProps) {
               <Link
                 href="/"
                 className={`transition-colors ${
-                  pathname === "/" ? "text-[#E06A26] font-bold" : "text-[#6B6B76] hover:text-[#1C1C1F]"
+                  pathname === "/" ? "text-indigo-400 font-bold" : "text-slate-400 hover:text-white"
                 }`}
               >
-                Platform Overview
+                {t("platform_overview")}
               </Link>
               {user && (
                 <Link
                   href={user.role === "ADMIN" ? "/admin" : user.role === "EXAMINER" ? "/examiner" : "/student"}
-                  className="text-[#E06A26] font-bold hover:text-[#C95716] flex items-center gap-1"
+                  className="text-indigo-400 font-bold hover:text-indigo-300 flex items-center gap-1"
                 >
-                  Go to {user.role === "ADMIN" ? "Admin Console" : user.role === "EXAMINER" ? "Examiner Portal" : "Student Dashboard"} &rarr;
+                  {user.role === "ADMIN" ? t("admin") : user.role === "EXAMINER" ? t("examiner") : t("student")} &rarr;
                 </Link>
               )}
             </nav>
@@ -184,14 +185,14 @@ export default function AppShell({ children }: AppShellProps) {
               <LanguageSwitcher />
               {user ? (
                 <div className="flex items-center gap-3">
-                  <span className="text-xs sm:text-sm font-semibold text-[#1C1C1F] hidden sm:inline">{user.name}</span>
-                  <Badge variant={user.role === "ADMIN" ? "saffron" : user.role === "EXAMINER" ? "terracotta" : "emerald"}>
-                    {user.role}
+                  <span className="text-xs sm:text-sm font-semibold text-slate-200 hidden sm:inline">{user.name}</span>
+                  <Badge variant={user.role === "ADMIN" ? "gold" : user.role === "EXAMINER" ? "indigo" : "emerald"}>
+                    {user.role === "ADMIN" ? t("admin") : user.role === "EXAMINER" ? t("examiner") : t("student")}
                   </Badge>
                   <button
                     onClick={logout}
-                    title="Sign Out"
-                    className="p-2 text-[#6B6B76] hover:text-[#C85332] transition-colors rounded-lg hover:bg-[#FEF3EC]"
+                    title={t("logout")}
+                    className="p-2 text-slate-400 hover:text-rose-400 transition-colors rounded-lg hover:bg-slate-800/60"
                   >
                     <LogOut className="h-4 w-4" />
                   </button>
@@ -199,7 +200,7 @@ export default function AppShell({ children }: AppShellProps) {
               ) : (
                 <div className="flex items-center gap-2">
                   <Link href="/login">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" className="border-slate-700/80 text-slate-300 hover:bg-slate-800 hover:text-white">
                       {t("login")}
                     </Button>
                   </Link>
@@ -219,21 +220,21 @@ export default function AppShell({ children }: AppShellProps) {
         </main>
 
         {/* Unified Platform Footer */}
-        <footer className="border-t border-[#EAE6DF] py-6 px-4 sm:px-8 bg-white/70 backdrop-blur-xs text-xs text-[#6B6B76]">
+        <footer className="border-t border-slate-800/80 py-6 px-4 sm:px-8 bg-[#090D16] text-xs text-slate-400 mt-auto">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="p-1 bg-[#E06A26] text-white rounded-md">
-                <GraduationCap className="h-3.5 w-3.5 text-[#FAF8F5]" />
+            <div className="flex items-center gap-2.5">
+              <div className="p-1 bg-gradient-to-tr from-indigo-600 to-cyan-500 text-white rounded-md">
+                <GraduationCap className="h-3.5 w-3.5" />
               </div>
-              <span className="font-bold text-[#1C1C1F]">IntelliExamAI</span>
-              <span>&copy; 2026 Intelligent Examination Platform. All rights reserved.</span>
+              <span className="font-bold text-white">IntelliExamAI</span>
+              <span>{t("copyright_notice")}</span>
             </div>
             <div className="flex items-center gap-6 font-medium">
-              <span className="inline-flex items-center gap-1.5 text-[#2B7853]">
-                <span className="h-2 w-2 rounded-full bg-[#2B7853]"></span>
-                Systems Operational
+              <span className="inline-flex items-center gap-1.5 text-emerald-400">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                {t("systems_operational")}
               </span>
-              <span>Automated Proctoring &bull; AI Grading</span>
+              <span>{t("proctoring_ai_grading")}</span>
             </div>
           </div>
         </footer>
@@ -242,37 +243,38 @@ export default function AppShell({ children }: AppShellProps) {
   }
 
   // 3. Authenticated Top Navigation Layout (Student, Examiner, Admin)
-  // Strictly NO Live Monitoring in navigation as requested
   const navItems = (() => {
     switch (user.role) {
       case "STUDENT":
         return [
-          { label: "Dashboard", href: "/student", icon: Layers },
-          { label: "My Exams", href: "/student/exams", icon: Calendar },
-          { label: "Results", href: "/student/results", icon: Award },
-          { label: "Performance", href: "/student/performance", icon: TrendingUp },
-          { label: "Profile", href: "/student/profile", icon: UserIcon },
+          { labelKey: "dashboard", href: "/student", icon: Layers },
+          { labelKey: "my_exams", href: "/student/exams", icon: Calendar },
+          { labelKey: "results", href: "/student/results", icon: Award },
+          { labelKey: "performance", href: "/student/performance", icon: TrendingUp },
+          { labelKey: "profile", href: "/student/profile", icon: UserIcon },
         ];
       case "EXAMINER":
         return [
-          { label: "Dashboard", href: "/examiner", icon: Activity },
-          { label: "Exams", href: "/examiner/exams", icon: Calendar },
-          { label: "Question Bank", href: "/examiner/questions", icon: BookOpen },
-          { label: "Valuation", href: "/examiner/evaluations", icon: Layers },
-          { label: "Results", href: "/examiner/results", icon: Award },
-          { label: "Notifications", href: "/notifications", icon: Bell, badge: unreadCount },
-          { label: "Profile", href: "/profile", icon: UserIcon },
+          { labelKey: "dashboard", href: "/examiner", icon: Activity },
+          { labelKey: "exams", href: "/examiner/exams", icon: Calendar },
+          { labelKey: "live_monitoring", href: "/examiner/monitoring", icon: Eye },
+          { labelKey: "question_bank", href: "/examiner/questions", icon: BookOpen },
+          { labelKey: "valuation", href: "/examiner/evaluations", icon: Layers },
+          { labelKey: "results", href: "/examiner/results", icon: Award },
+          { labelKey: "notifications", href: "/notifications", icon: Bell, badge: unreadCount },
+          { labelKey: "profile", href: "/profile", icon: UserIcon },
         ];
       case "ADMIN":
         return [
-          { label: "Dashboard", href: "/admin", icon: Activity },
-          { label: "Users", href: "/admin/users", icon: Users },
-          { label: "Exams", href: "/admin/exams", icon: Calendar },
-          { label: "Question Bank", href: "/admin/questions", icon: BookOpen },
-          { label: "Valuation", href: "/admin/evaluations", icon: Layers },
-          { label: "Reports", href: "/admin/results", icon: Award },
-          { label: "Notifications", href: "/notifications", icon: Bell, badge: unreadCount },
-          { label: "Profile", href: "/profile", icon: UserIcon },
+          { labelKey: "dashboard", href: "/admin", icon: Activity },
+          { labelKey: "users", href: "/admin/users", icon: Users },
+          { labelKey: "exams", href: "/admin/exams", icon: Calendar },
+          { labelKey: "live_monitoring", href: "/admin/monitoring", icon: Eye },
+          { labelKey: "question_bank", href: "/admin/questions", icon: BookOpen },
+          { labelKey: "valuation", href: "/admin/evaluations", icon: Layers },
+          { labelKey: "reports", href: "/admin/results", icon: Award },
+          { labelKey: "notifications", href: "/notifications", icon: Bell, badge: unreadCount },
+          { labelKey: "profile", href: "/profile", icon: UserIcon },
         ];
       default:
         return [];
@@ -289,25 +291,25 @@ export default function AppShell({ children }: AppShellProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF8F5]">
+    <div className="min-h-screen flex flex-col bg-[#080C14] text-slate-100 bg-tech-grid">
       {/* ========================================================= */}
       {/* HORIZONTAL TOP NAVIGATION BAR (NO LEFT SIDEBAR)           */}
       {/* ========================================================= */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE6DF] shadow-xs">
+      <header className="sticky top-0 z-40 bg-[#090D16]/90 backdrop-blur-md border-b border-slate-800/80 shadow-md shadow-black/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-3">
             {/* Left: Branding & Role Badge */}
             <div className="flex items-center gap-3 flex-shrink-0">
               <Link href={user.role === "ADMIN" ? "/admin" : user.role === "EXAMINER" ? "/examiner" : "/student"} className="flex items-center gap-2.5 font-bold text-base hover:opacity-95 transition-opacity">
-                <div className="p-1.5 bg-[#E06A26] text-white rounded-xl shadow-xs border border-[#C95716]">
-                  <GraduationCap className="h-5 w-5 text-[#FAF8F5]" />
+                <div className="p-1.5 bg-gradient-to-tr from-indigo-600 to-cyan-500 text-white rounded-xl shadow-md shadow-indigo-500/25 border border-indigo-400/30">
+                  <GraduationCap className="h-5 w-5" />
                 </div>
-                <span className="tracking-tight text-[#1C1C1F] font-extrabold text-base hidden sm:inline">
-                  Intelli<span className="text-[#E06A26]">ExamAI</span>
+                <span className="tracking-tight text-white font-extrabold text-base hidden sm:inline">
+                  Intelli<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">ExamAI</span>
                 </span>
               </Link>
-              <Badge variant={user.role === "ADMIN" ? "saffron" : user.role === "EXAMINER" ? "terracotta" : "emerald"}>
-                {user.role === "ADMIN" ? "Admin" : user.role === "EXAMINER" ? "Examiner" : "Student"}
+              <Badge variant={user.role === "ADMIN" ? "gold" : user.role === "EXAMINER" ? "indigo" : "emerald"}>
+                {user.role === "ADMIN" ? t("admin") : user.role === "EXAMINER" ? t("examiner") : t("student")}
               </Badge>
             </div>
 
@@ -322,14 +324,14 @@ export default function AppShell({ children }: AppShellProps) {
                     href={item.href}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
                       active
-                        ? "bg-[#FEF3EC] text-[#E06A26] border border-[#FAD9C5] font-bold shadow-xs"
-                        : "text-[#6B6B76] hover:text-[#1C1C1F] hover:bg-[#FAF8F5]"
+                        ? "bg-indigo-600/15 text-indigo-300 border border-indigo-500/30 font-bold shadow-xs shadow-indigo-500/10"
+                        : "text-slate-400 hover:text-white hover:bg-slate-800/60"
                     }`}
                   >
-                    <Icon className={`h-3.5 w-3.5 ${active ? "text-[#E06A26]" : "text-[#8E8E93]"}`} />
-                    <span>{item.label}</span>
+                    <Icon className={`h-3.5 w-3.5 ${active ? "text-indigo-400" : "text-slate-400"}`} />
+                    <span>{t(item.labelKey)}</span>
                     {item.badge !== undefined && item.badge > 0 && (
-                      <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#E06A26] text-white">
+                      <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-indigo-500 text-white">
                         {item.badge}
                       </span>
                     )}
@@ -352,13 +354,13 @@ export default function AppShell({ children }: AppShellProps) {
                     }
                     setNotifDropdownOpen(!notifDropdownOpen);
                   }}
-                  className="relative p-2 text-[#6B6B76] hover:text-[#E06A26] hover:bg-[#FAF8F5] rounded-xl transition-colors"
-                  title="Notifications"
-                  aria-label="View notifications"
+                  className="relative p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800/60 rounded-xl transition-colors"
+                  title={t("notifications")}
+                  aria-label={t("notifications")}
                 >
                   <Bell className="h-5 w-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-[#E06A26] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-xs">
+                    <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-indigo-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-xs">
                       {unreadCount}
                     </span>
                   )}
@@ -366,17 +368,17 @@ export default function AppShell({ children }: AppShellProps) {
 
                 {/* Dropdown Panel */}
                 {notifDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white border border-[#EAE6DF] rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                    <div className="p-3.5 bg-[#FAF8F5] border-b border-[#EAE6DF] flex items-center justify-between">
+                  <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0D1322] border border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    <div className="p-3.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-[#1C1C1F]">Notifications</span>
+                        <span className="font-bold text-xs text-white">{t("notifications")}</span>
                         {unreadCount > 0 ? (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#E06A26] text-white">
-                            {unreadCount} new
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            {unreadCount} {t("new")}
                           </span>
                         ) : (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-[#FAF8F5] text-[#6B6B76] border border-[#EAE6DF]">
-                            All read
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                            {t("all_read")}
                           </span>
                         )}
                       </div>
@@ -384,58 +386,58 @@ export default function AppShell({ children }: AppShellProps) {
                         <button
                           type="button"
                           onClick={handleMarkAllRead}
-                          className="text-[11px] font-semibold text-[#E06A26] hover:underline flex items-center gap-1"
+                          className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 hover:underline flex items-center gap-1"
                         >
-                          <CheckCheck className="h-3 w-3" /> Mark all read
+                          <CheckCheck className="h-3 w-3" /> {t("mark_all_read")}
                         </button>
                       )}
                     </div>
 
-                    <div className="max-h-72 overflow-y-auto divide-y divide-[#EAE6DF]">
+                    <div className="max-h-72 overflow-y-auto divide-y divide-slate-800">
                       {notifications.length === 0 ? (
-                        <div className="p-6 text-center text-xs text-[#6B6B76]">No notifications on record</div>
+                        <div className="p-6 text-center text-xs text-slate-400">{t("no_notifications")}</div>
                       ) : (
                         notifications.slice(0, 8).map((n) => (
                           <div
                             key={n.id}
-                            className={`p-3 text-xs transition-colors hover:bg-[#FAF8F5] ${
-                              !n.is_read ? "bg-[#FEF3EC]/40 font-medium" : "bg-white"
+                            className={`p-3 text-xs transition-colors hover:bg-slate-800/40 ${
+                              !n.is_read ? "bg-indigo-950/20 font-medium" : "bg-[#0D1322]"
                             }`}
                           >
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5 min-w-0">
                                 {!n.is_read ? (
-                                  <span className="h-2 w-2 rounded-full bg-[#E06A26] flex-shrink-0" />
+                                  <span className="h-2 w-2 rounded-full bg-indigo-400 flex-shrink-0" />
                                 ) : (
                                   <span className="h-2 w-2 rounded-full bg-transparent flex-shrink-0" />
                                 )}
-                                <span className="font-bold text-[#1C1C1F] truncate">{n.title}</span>
+                                <span className="font-bold text-slate-100 truncate">{n.title}</span>
                               </div>
                               <div className="flex items-center gap-1.5 flex-shrink-0">
-                                <span className="text-[10px] text-[#6B6B76] font-mono">
+                                <span className="text-[10px] text-slate-400 font-mono">
                                   {formatTimestamp(n.created_at)}
                                 </span>
                                 {!n.is_read && (
                                   <button
                                     type="button"
                                     onClick={(e) => handleMarkSingleRead(n.id, e)}
-                                    title="Mark as read"
-                                    className="text-[11px] text-[#E06A26] hover:text-[#C95716] font-semibold flex items-center gap-0.5 p-1 rounded hover:bg-white"
+                                    title={t("mark_as_read")}
+                                    className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-0.5 p-1 rounded hover:bg-slate-800"
                                   >
                                     <CheckCheck className="h-3.5 w-3.5" />
                                   </button>
                                 )}
                               </div>
                             </div>
-                            <p className="text-[11px] text-[#6B6B76] line-clamp-2 mt-0.5 pl-3.5">{n.message}</p>
+                            <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5 pl-3.5">{n.message}</p>
                             {n.link && (
                               <div className="mt-1 pl-3.5">
                                 <Link
                                   href={n.link}
                                   onClick={() => setNotifDropdownOpen(false)}
-                                  className="text-[10px] font-bold text-[#E06A26] hover:underline inline-flex items-center gap-1"
+                                  className="text-[10px] font-bold text-indigo-400 hover:underline inline-flex items-center gap-1"
                                 >
-                                  View Details &rarr;
+                                  {t("view_details")} &rarr;
                                 </Link>
                               </div>
                             )}
@@ -444,13 +446,13 @@ export default function AppShell({ children }: AppShellProps) {
                       )}
                     </div>
 
-                    <div className="p-2.5 bg-[#FAF8F5] border-t border-[#EAE6DF] text-center">
+                    <div className="p-2.5 bg-slate-900/80 border-t border-slate-800 text-center">
                       <Link
                         href="/notifications"
                         onClick={() => setNotifDropdownOpen(false)}
-                        className="text-xs font-bold text-[#E06A26] hover:underline"
+                        className="text-xs font-bold text-indigo-400 hover:text-indigo-300 hover:underline"
                       >
-                        View All Notifications &rarr;
+                        {t("view_all_notifications")} &rarr;
                       </Link>
                     </div>
                   </div>
@@ -462,26 +464,26 @@ export default function AppShell({ children }: AppShellProps) {
                 <button
                   type="button"
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center gap-2 p-1.5 hover:bg-[#FAF8F5] rounded-xl transition-colors border border-transparent hover:border-[#EAE6DF]"
+                  className="flex items-center gap-2 p-1.5 hover:bg-slate-800/60 rounded-xl transition-colors border border-transparent hover:border-slate-700"
                   aria-label="User profile menu"
                 >
-                  <div className="h-7 w-7 rounded-lg bg-[#E06A26] text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                  <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-indigo-600 to-cyan-500 text-white flex items-center justify-center font-bold text-xs shadow-xs">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-xs font-semibold text-[#1C1C1F] hidden md:inline max-w-[120px] truncate">
+                  <span className="text-xs font-semibold text-slate-200 hidden md:inline max-w-[120px] truncate">
                     {user.name}
                   </span>
-                  <ChevronDown className="h-3.5 w-3.5 text-[#6B6B76]" />
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
                 </button>
 
                 {userDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white border border-[#EAE6DF] rounded-2xl shadow-xl z-50 overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="px-4 py-3 border-b border-[#EAE6DF] bg-[#FAF8F5]">
-                      <div className="font-bold text-xs text-[#1C1C1F] truncate">{user.name}</div>
-                      <div className="text-[11px] text-[#6B6B76] truncate">{user.email}</div>
+                  <div className="absolute right-0 mt-2 w-56 bg-[#0D1322] border border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">
+                      <div className="font-bold text-xs text-white truncate">{user.name}</div>
+                      <div className="text-[11px] text-slate-400 truncate">{user.email}</div>
                       {user.registration_number && (
-                        <div className="text-[10px] text-[#E06A26] font-mono font-bold mt-1">
-                          Reg: {user.registration_number}
+                        <div className="text-[10px] text-indigo-400 font-mono font-bold mt-1">
+                          {t("registration_number")}: {user.registration_number}
                         </div>
                       )}
                     </div>
@@ -490,29 +492,29 @@ export default function AppShell({ children }: AppShellProps) {
                       <Link
                         href={user.role === "STUDENT" ? "/student/profile" : "/profile"}
                         onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2 text-xs text-[#1C1C1F] hover:bg-[#FAF8F5] font-medium"
+                        className="flex items-center gap-2.5 px-4 py-2 text-xs text-slate-300 hover:text-white hover:bg-slate-800 font-medium"
                       >
-                        <UserIcon className="h-4 w-4 text-[#E06A26]" /> Account Profile
+                        <UserIcon className="h-4 w-4 text-indigo-400" /> {t("my_account_profile")}
                       </Link>
                       <Link
                         href="/change-password"
                         onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2 text-xs text-[#1C1C1F] hover:bg-[#FAF8F5] font-medium"
+                        className="flex items-center gap-2.5 px-4 py-2 text-xs text-slate-300 hover:text-white hover:bg-slate-800 font-medium"
                       >
-                        <Shield className="h-4 w-4 text-[#E06A26]" /> Change Password
+                        <Shield className="h-4 w-4 text-indigo-400" /> {t("change_password")}
                       </Link>
                     </div>
 
-                    <div className="border-t border-[#EAE6DF] pt-1">
+                    <div className="border-t border-slate-800 pt-1">
                       <button
                         type="button"
                         onClick={() => {
                           setUserDropdownOpen(false);
                           logout();
                         }}
-                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-[#C85332] hover:bg-[#FEF3EC] font-semibold text-left transition-colors"
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-rose-400 hover:bg-rose-950/30 font-semibold text-left transition-colors"
                       >
-                        <LogOut className="h-4 w-4" /> Sign Out
+                        <LogOut className="h-4 w-4" /> {t("logout")}
                       </button>
                     </div>
                   </div>
@@ -523,7 +525,7 @@ export default function AppShell({ children }: AppShellProps) {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 text-[#6B6B76] hover:text-[#1C1C1F] hover:bg-[#FAF8F5] rounded-xl transition-colors"
+                className="lg:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-800/60 rounded-xl transition-colors"
                 aria-label="Toggle navigation menu"
               >
                 {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -534,13 +536,13 @@ export default function AppShell({ children }: AppShellProps) {
 
         {/* Mobile Navigation Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-[#EAE6DF] bg-white px-4 py-3 space-y-1 shadow-lg animate-in slide-in-from-top-2 duration-150">
-            <div className="pb-2 mb-2 border-b border-[#EAE6DF] flex items-center justify-between">
-              <span className="text-[11px] font-bold text-[#6B6B76] uppercase tracking-wider">
-                {user.role} Navigation
+          <div className="lg:hidden border-t border-slate-800 bg-[#090D16] px-4 py-3 space-y-1 shadow-2xl animate-in slide-in-from-top-2 duration-150">
+            <div className="pb-2 mb-2 border-b border-slate-800 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                {user.role === "ADMIN" ? t("admin") : user.role === "EXAMINER" ? t("examiner") : t("student")} {t("navigation_menu")}
               </span>
-              <Badge variant={user.role === "ADMIN" ? "saffron" : user.role === "EXAMINER" ? "terracotta" : "emerald"}>
-                {user.role}
+              <Badge variant={user.role === "ADMIN" ? "gold" : user.role === "EXAMINER" ? "indigo" : "emerald"}>
+                {user.role === "ADMIN" ? t("admin") : user.role === "EXAMINER" ? t("examiner") : t("student")}
               </Badge>
             </div>
 
@@ -554,16 +556,16 @@ export default function AppShell({ children }: AppShellProps) {
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                     active
-                      ? "bg-[#FEF3EC] text-[#E06A26] border border-[#FAD9C5] font-bold"
-                      : "text-[#1C1C1F] hover:bg-[#FAF8F5]"
+                      ? "bg-indigo-600/15 text-indigo-300 border border-indigo-500/30 font-bold shadow-xs"
+                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Icon className={`h-4 w-4 ${active ? "text-[#E06A26]" : "text-[#6B6B76]"}`} />
-                    <span>{item.label}</span>
+                    <Icon className={`h-4 w-4 ${active ? "text-indigo-400" : "text-slate-400"}`} />
+                    <span>{t(item.labelKey)}</span>
                   </div>
                   {item.badge !== undefined && item.badge > 0 && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E06A26] text-white">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500 text-white">
                       {item.badge}
                     </span>
                   )}
@@ -571,16 +573,16 @@ export default function AppShell({ children }: AppShellProps) {
               );
             })}
 
-            <div className="pt-2 mt-2 border-t border-[#EAE6DF]">
+            <div className="pt-2 mt-2 border-t border-slate-800">
               <button
                 type="button"
                 onClick={() => {
                   setMobileMenuOpen(false);
                   logout();
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#C85332] hover:bg-[#FEF3EC] rounded-xl transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-slate-800/60 rounded-xl transition-colors"
               >
-                <LogOut className="h-4 w-4" /> Sign Out
+                <LogOut className="h-4 w-4" /> {t("logout")}
               </button>
             </div>
           </div>
@@ -595,21 +597,21 @@ export default function AppShell({ children }: AppShellProps) {
       </main>
 
       {/* Unified Platform Footer */}
-      <footer className="border-t border-[#EAE6DF] py-6 px-4 sm:px-8 bg-white/70 backdrop-blur-xs text-xs text-[#6B6B76] mt-auto">
+      <footer className="border-t border-slate-800/80 py-6 px-4 sm:px-8 bg-[#090D16] text-xs text-slate-400 mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="p-1 bg-[#E06A26] text-white rounded-md">
-              <GraduationCap className="h-3.5 w-3.5 text-[#FAF8F5]" />
+          <div className="flex items-center gap-2.5">
+            <div className="p-1 bg-gradient-to-tr from-indigo-600 to-cyan-500 text-white rounded-md">
+              <GraduationCap className="h-3.5 w-3.5" />
             </div>
-            <span className="font-bold text-[#1C1C1F]">IntelliExamAI</span>
-            <span>&copy; 2026 Intelligent Examination Platform. All rights reserved.</span>
+            <span className="font-bold text-white">IntelliExamAI</span>
+            <span>{t("copyright_notice")}</span>
           </div>
           <div className="flex items-center gap-6 font-medium">
-            <span className="inline-flex items-center gap-1.5 text-[#2B7853]">
-              <span className="h-2 w-2 rounded-full bg-[#2B7853]"></span>
-              Systems Operational
+            <span className="inline-flex items-center gap-1.5 text-emerald-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              {t("systems_operational")}
             </span>
-            <span>Automated Proctoring &bull; AI Grading</span>
+            <span>{t("proctoring_ai_grading")}</span>
           </div>
         </div>
       </footer>

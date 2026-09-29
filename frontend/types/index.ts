@@ -147,6 +147,7 @@ export interface StudentOption {
   id: number;
   option_text: string;
   option_order: number;
+  translations?: Record<string, string>;
 }
 
 export interface StudentQuestion {
@@ -158,6 +159,7 @@ export interface StudentQuestion {
   marks: number;
   negative_marks?: number;
   options: StudentOption[];
+  translations?: Record<string, string>;
 }
 
 export interface GeneratedPaper {
@@ -262,6 +264,9 @@ export interface ExamSubmissionResult {
   submission_status?: string;
   submission_reason?: string;
   submitted_at: string;
+  score?: number;
+  attempt_number?: number;
+  completed_at?: string;
   breakdown: QuestionResultBreakdown[];
 }
 
@@ -310,6 +315,7 @@ export interface EvaluationSessionDetailResponse {
   evaluated_questions: number;
   progress_percentage: number;
   current_total_marks: number;
+  status?: string;
   questions: QuestionResultBreakdown[];
 }
 
@@ -369,6 +375,7 @@ export interface QuestionImportItem {
   status: "VALID" | "INVALID" | "DUPLICATE";
   errors: string[];
   warnings: string[];
+  validation_errors?: string[];
 }
 
 export interface QuestionImportPreviewResponse {

@@ -4,33 +4,57 @@
 
 @layer base {
   body {
-    background-color: #FAF8F5; /* Warm Ivory */
-    color: #1C1C1F;            /* Deep Charcoal */
+    background-color: #080C14; /* Deep Obsidian Canvas */
+    color: #F8FAFC;            /* Crisp Slate-50 Text */
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   ::selection {
-    background-color: #E06A26; /* Saffron Accent */
-    color: #FAF8F5;            /* Ivory */
+    background-color: #6366F1; /* Electric Indigo */
+    color: #FFFFFF;
   }
 }
 
-/* Custom scrollbars for panels, modals and question palette */
+/* Modern AI SaaS background mesh grid pattern */
+.bg-tech-grid {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+.bg-radial-glow {
+  background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.18), transparent 70%);
+}
+
+.bg-cyan-glow {
+  background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(6, 182, 212, 0.15), transparent 70%);
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Custom modern scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #080C14;
 }
 ::-webkit-scrollbar-thumb {
-  background: #E5DED4;
+  background: #1E293B;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #E06A26;
+  background: #6366F1;
 }
 
 /* Respect user's motion preferences */

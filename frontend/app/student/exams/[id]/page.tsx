@@ -5,12 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import { api, getErrorMessage } from "@/lib/api";
 import { Exam, GeneratedPaper, StudentQuestion } from "@/types";
 import { Card, Button, Badge, Alert } from "@/components/UIComponents";
+import { useLanguage } from "@/lib/i18n";
 import { Clock, CheckCircle2, ShieldAlert, ArrowLeft, Send } from "lucide-react";
 
 export default function StudentExamPage() {
   const params = useParams();
   const router = useRouter();
   const examId = params.id as string;
+  const { t } = useLanguage();
 
   const [exam, setExam] = useState<Exam | null>(null);
   const [paper, setPaper] = useState<GeneratedPaper | null>(null);
@@ -96,74 +98,74 @@ export default function StudentExamPage() {
 
   if (isLoadingExam) {
     return (
-      <div className="flex justify-center p-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#E06A26]"></div>
+      <div className="flex justify-center p-16">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent"></div>
       </div>
     );
   }
 
   if (!exam) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 max-w-4xl mx-auto py-6">
         <Alert type="error">{error || "Exam not found."}</Alert>
         <Button variant="outline" onClick={() => router.push("/student")}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Dashboard
+          <ArrowLeft className="h-4 w-4 mr-1" /> {t("back_to_dashboard")}
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 py-2">
       <div className="flex items-center justify-between">
         <button
           onClick={() => router.push("/student")}
-          className="text-xs font-semibold text-[#6B6B76] hover:text-[#1C1C1F] flex items-center gap-1.5 transition-colors"
+          className="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 transition-colors"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+          <ArrowLeft className="h-4 w-4" /> {t("back_to_dashboard")}
         </button>
-        <Badge variant="saffron">Candidate Session</Badge>
+        <Badge variant="indigo">{t("student")}</Badge>
       </div>
 
       {error && <Alert type="error">{error}</Alert>}
 
       {/* Header Info */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-[#171719] via-[#242428] to-[#1C1C1F] rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-[#2F2F36] space-y-4">
+      <div className="relative overflow-hidden bg-[#0D1322]/90 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-slate-800 space-y-4 backdrop-blur-md">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">{exam.name}</h1>
-            <p className="text-sm text-[#FAF8F5]/70 mt-1">
-              Subject: <span className="font-bold text-white">{exam.subject}</span>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">{exam.name}</h1>
+            <p className="text-sm text-slate-400 mt-1">
+              {t("subject")}: <span className="font-semibold text-indigo-300">{exam.subject}</span>
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="bg-white/10 border border-white/15 px-4 py-2 rounded-xl text-center">
-              <span className="block text-[11px] text-[#FAF8F5]/60 font-semibold uppercase">Duration</span>
-              <span className="text-lg font-bold font-mono">{exam.duration_minutes}m</span>
+            <div className="bg-slate-900/80 border border-slate-800 px-4 py-2 rounded-xl text-center">
+              <span className="block text-[11px] text-slate-400 font-semibold uppercase">{t("duration")}</span>
+              <span className="text-lg font-bold font-mono text-white">{exam.duration_minutes}m</span>
             </div>
-            <div className="bg-white/10 border border-white/15 px-4 py-2 rounded-xl text-center">
-              <span className="block text-[11px] text-[#FAF8F5]/60 font-semibold uppercase">Questions</span>
-              <span className="text-lg font-bold font-mono">{exam.total_questions}</span>
+            <div className="bg-slate-900/80 border border-slate-800 px-4 py-2 rounded-xl text-center">
+              <span className="block text-[11px] text-slate-400 font-semibold uppercase">{t("questions")}</span>
+              <span className="text-lg font-bold font-mono text-white">{exam.total_questions}</span>
             </div>
-            <div className="bg-white/10 border border-white/15 px-4 py-2 rounded-xl text-center">
-              <span className="block text-[11px] text-[#FAF8F5]/60 font-semibold uppercase">Max Marks</span>
-              <span className="text-lg font-bold font-mono text-[#E06A26]">{exam.maximum_marks}</span>
+            <div className="bg-slate-900/80 border border-slate-800 px-4 py-2 rounded-xl text-center">
+              <span className="block text-[11px] text-slate-400 font-semibold uppercase">{t("total_marks")}</span>
+              <span className="text-lg font-bold font-mono text-indigo-400">{exam.maximum_marks}</span>
             </div>
           </div>
         </div>
 
         <div className="pt-2 flex flex-wrap gap-2 text-xs">
-          <span className="bg-white/10 border border-white/15 px-3 py-1 rounded-full font-mono text-[#FAF8F5]/70">
-            Window: {new Date(exam.start_time).toLocaleTimeString()} – {new Date(exam.end_time).toLocaleTimeString()}
+          <span className="bg-slate-900/80 border border-slate-800 px-3 py-1 rounded-full font-mono text-slate-400">
+            {t("start_window")} {new Date(exam.start_time).toLocaleTimeString()} – {new Date(exam.end_time).toLocaleTimeString()}
           </span>
           {exam.negative_marking_enabled && (
-            <span className="bg-[#FEF3EC] text-[#C85332] border border-[#F8DDD5] px-3 py-1 rounded-full font-semibold">
-              Negative Marking Enabled
+            <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-3 py-1 rounded-full font-semibold">
+              {t("negative_marking")}
             </span>
           )}
           {exam.webcam_monitoring_enabled && (
-            <span className="bg-white/15 text-white border border-white/20 px-3 py-1 rounded-full font-semibold">
-              Proctored Environment Active
+            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full font-semibold">
+              {t("proctored")}
             </span>
           )}
         </div>
@@ -175,46 +177,46 @@ export default function StudentExamPage() {
 
       {/* If paper has not been generated yet */}
       {!paper ? (
-        <Card className="text-center py-12 space-y-4">
+        <Card className="text-center py-12 space-y-4 border-slate-800 bg-[#0D1322]/90 shadow-xl">
           {exam.is_completed ? (
             <>
-              <div className="inline-flex p-3.5 rounded-2xl bg-[#FAF8F5] text-[#6B6B76] border border-[#EAE6DF] mx-auto">
-                <CheckCircle2 className="h-10 w-10 text-[#6B6B76]" />
+              <div className="inline-flex p-3.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mx-auto">
+                <CheckCircle2 className="h-10 w-10 text-emerald-400" />
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FAF8F5] border border-[#EAE6DF] rounded-full text-xs font-bold text-[#6B6B76] mx-auto">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Exam Already Completed
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-xs font-bold text-emerald-400 mx-auto">
+                <CheckCircle2 className="h-3.5 w-3.5" /> {t("exam_completed_title")}
               </div>
-              <h2 className="text-xl font-bold text-[#1C1C1F]">Assessment Completed</h2>
-              <p className="text-xs sm:text-sm text-[#6B6B76] max-w-md mx-auto leading-relaxed">
-                You have already completed and submitted your examination. Your responses have been saved and evaluated in the official platform records.
+              <h2 className="text-xl font-bold text-white">{t("completed_exams")}</h2>
+              <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+                {t("no_completed_exams_desc")}
               </p>
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Button
                   variant="primary"
                   size="lg"
                   onClick={() => router.push(`/student/results?exam_id=${examId}`)}
-                  className="px-8 shadow-saffron/20"
+                  className="px-8 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold shadow-lg shadow-indigo-500/20"
                 >
-                  View Assessment Result
+                  {t("view_result")}
                 </Button>
                 <Button
                   variant="outline"
                   size="lg"
                   onClick={() => router.push("/student")}
-                  className="text-[#6B6B76]"
+                  className="text-slate-300 border-slate-700 bg-slate-800/60 hover:bg-slate-700 hover:text-white"
                 >
-                  Back to Dashboard
+                  {t("back_to_dashboard")}
                 </Button>
               </div>
             </>
           ) : !exam.is_registered ? (
             <>
-              <div className="inline-flex p-3.5 rounded-2xl bg-[#FEF3EC] text-[#E06A26] border border-[#FAD9C5] mx-auto">
-                <ShieldAlert className="h-10 w-10 text-[#E06A26]" />
+              <div className="inline-flex p-3.5 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mx-auto">
+                <ShieldAlert className="h-10 w-10 text-indigo-400" />
               </div>
-              <h2 className="text-xl font-bold text-[#1C1C1F]">Registration Required</h2>
-              <p className="text-xs sm:text-sm text-[#6B6B76] max-w-md mx-auto leading-relaxed">
-                You must register for this examination before entering instructions or attempting questions. Confirm your registration below.
+              <h2 className="text-xl font-bold text-white">{t("registration_required")}</h2>
+              <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+                {t("no_registered_exams_desc")}
               </p>
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Button
@@ -222,41 +224,32 @@ export default function StudentExamPage() {
                   size="lg"
                   onClick={handleRegister}
                   isLoading={isRegistering}
-                  className="px-8 shadow-saffron/20"
+                  className="px-8 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold shadow-lg shadow-indigo-500/20"
                 >
-                  Register for Examination
+                  {t("register_exam")}
                 </Button>
               </div>
             </>
           ) : (
             <>
-              <div className="inline-flex p-3.5 rounded-2xl bg-[#EFF7F2] text-[#2B7853] border border-[#C4DFD3] mx-auto">
-                <CheckCircle2 className="h-10 w-10 text-[#2B7853]" />
+              <div className="inline-flex p-3.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mx-auto">
+                <CheckCircle2 className="h-10 w-10 text-emerald-400" />
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#EFF7F2] border border-[#C4DFD3] rounded-full text-xs font-bold text-[#2B7853] mx-auto">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Seat Confirmed (Registered)
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-xs font-bold text-emerald-400 mx-auto">
+                <CheckCircle2 className="h-3.5 w-3.5" /> {t("confirmed_seats")}
               </div>
-              <h2 className="text-xl font-bold text-[#1C1C1F]">Ready to Begin Examination?</h2>
-              <p className="text-xs sm:text-sm text-[#6B6B76] max-w-md mx-auto leading-relaxed">
-                Your registration is confirmed. Proceed to review dynamic instructions, accept proctoring rules, and launch your exam session.
+              <h2 className="text-xl font-bold text-white">{t("ready_to_start")}</h2>
+              <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+                {t("student_hero_subtitle")}
               </p>
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Button
                   variant="primary"
                   size="lg"
                   onClick={() => router.push(`/student/exams/${examId}/instructions`)}
-                  className="px-8 shadow-saffron/20"
+                  className="px-8 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold shadow-lg shadow-indigo-500/20"
                 >
-                  Enter Instructions & Start Exam
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={handleGeneratePaper}
-                  isLoading={isGenerating}
-                  className="text-[#6B6B76]"
-                >
-                  Preview Paper (Verification Mode)
+                  {t("accept_and_start")}
                 </Button>
               </div>
             </>
@@ -265,14 +258,14 @@ export default function StudentExamPage() {
       ) : (
         /* Rendered Question Paper */
         <div className="space-y-6">
-          <div className="flex items-center justify-between bg-[#EFF7F2] border border-[#C4DFD3] p-4 rounded-xl text-[#2B7853] text-sm font-semibold">
+          <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl text-emerald-300 text-sm font-semibold">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5" />
+              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
               <span>
                 <strong>Paper Generated Successfully!</strong> Randomized deterministic paper ready.
               </span>
             </div>
-            <span className="text-xs font-mono font-bold bg-[#C4DFD3]/50 px-3 py-1 rounded-full">
+            <span className="text-xs font-mono font-bold bg-emerald-500/20 px-3 py-1 rounded-full text-emerald-300">
               {paper.questions.length} Questions Loaded
             </span>
           </div>
@@ -283,13 +276,13 @@ export default function StudentExamPage() {
               const isMCQ = q.question_type === "MCQ";
 
               return (
-                <Card key={q.id} className="space-y-4">
-                  <div className="flex items-start justify-between gap-2 border-b border-[#EAE6DF] pb-3">
+                <Card key={q.id} className="space-y-4 border-slate-800 bg-[#0D1322]/90 shadow-xl">
+                  <div className="flex items-start justify-between gap-2 border-b border-slate-800 pb-3">
                     <div className="flex items-center gap-2">
-                      <span className="h-7 w-7 rounded-full bg-[#FEF3EC] text-[#E06A26] font-bold text-xs flex items-center justify-center border border-[#FAD9C5]">
+                      <span className="h-7 w-7 rounded-full bg-slate-900 border border-slate-800 text-indigo-400 font-bold text-xs flex items-center justify-center">
                         {idx + 1}
                       </span>
-                      <span className="text-xs font-semibold uppercase tracking-wider text-[#6B6B76]">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                         {q.question_type}
                       </span>
                     </div>
@@ -297,11 +290,11 @@ export default function StudentExamPage() {
                       <Badge variant={q.difficulty === "HARD" ? "rose" : q.difficulty === "MEDIUM" ? "amber" : "emerald"}>
                         {q.difficulty}
                       </Badge>
-                      <Badge variant="saffron">{q.marks} pts</Badge>
+                      <Badge variant="indigo">{q.marks} pts</Badge>
                     </div>
                   </div>
 
-                  <p className="text-base font-medium text-[#1C1C1F] leading-relaxed whitespace-pre-wrap">
+                  <p className="text-base font-medium text-white leading-relaxed whitespace-pre-wrap">
                     {q.question_text}
                   </p>
 
@@ -319,8 +312,8 @@ export default function StudentExamPage() {
                             onClick={() => handleOptionSelect(q.id, opt.id, isMulti)}
                             className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
                               isSelected
-                                ? "bg-[#FEF3EC] border-[#E06A26] text-[#1C1C1F] font-medium ring-1 ring-[#E06A26]/30"
-                                : "bg-white border-[#EAE6DF] hover:bg-[#FAF8F5] text-[#1C1C1F]"
+                                ? "bg-indigo-600/15 border-indigo-500 text-white font-medium ring-1 ring-indigo-500/30"
+                                : "bg-slate-900/60 border-slate-800 hover:bg-slate-800/50 text-slate-300"
                             }`}
                           >
                             <input
@@ -328,9 +321,9 @@ export default function StudentExamPage() {
                               name={`question-${q.id}`}
                               checked={isSelected}
                               onChange={() => {}}
-                              className="h-4 w-4 text-[#E06A26] focus:ring-[#E06A26] rounded"
+                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 rounded bg-slate-800 border-slate-700"
                             />
-                            <span className="text-sm font-medium text-[#1C1C1F]">{opt.option_text}</span>
+                            <span className="text-sm font-medium">{opt.option_text}</span>
                           </div>
                         );
                       })}
@@ -345,16 +338,16 @@ export default function StudentExamPage() {
                         value={answers[q.id] || ""}
                         onChange={(e) => handleTextAnswer(q.id, e.target.value)}
                         placeholder="Type your response here..."
-                        className="w-full px-3.5 py-2.5 text-sm bg-white text-[#1C1C1F] placeholder-[#6B6B76] border rounded-xl border-[#EAE6DF] focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none"
+                        className="w-full px-3.5 py-2.5 text-sm bg-slate-900/80 text-white placeholder-slate-600 border rounded-xl border-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
                       />
                     </div>
                   )}
 
                   {/* Image Upload Question Type */}
                   {q.question_type === "IMAGE_UPLOAD" && (
-                    <div className="pt-2 p-6 border-2 border-dashed rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-center space-y-2">
-                      <p className="text-xs font-semibold text-[#6B6B76]">Diagram / Handwritten Solution Upload (PNG, JPEG, WEBP - Max 5MB)</p>
-                      <p className="text-[11px] text-[#E06A26]">File upload and automated OCR pipeline enabled in exam attempt workspace.</p>
+                    <div className="pt-2 p-6 border-2 border-dashed rounded-xl border-slate-800 bg-slate-900/40 text-center space-y-2">
+                      <p className="text-xs font-semibold text-slate-400">Diagram / Handwritten Solution Upload (PNG, JPEG, WEBP - Max 5MB)</p>
+                      <p className="text-[11px] text-indigo-400">File upload and automated OCR pipeline enabled in exam attempt workspace.</p>
                     </div>
                   )}
                 </Card>
@@ -362,11 +355,15 @@ export default function StudentExamPage() {
             })}
           </div>
 
-          <Card className="flex items-center justify-between p-4 bg-[#FAF8F5]">
-            <span className="text-xs text-[#6B6B76]">
-              Exam paper generated and bound to candidate ID. (Week 1–2 Verification Mode)
+          <Card className="flex items-center justify-between p-4 bg-slate-900/60 border border-slate-800">
+            <span className="text-xs text-slate-400">
+              Exam paper generated and bound to candidate ID. (Verification Mode)
             </span>
-            <Button variant="primary" onClick={() => alert("Week 1 & 2 Paper Generation and Answering verified successfully!")}>
+            <Button
+              variant="primary"
+              onClick={() => alert("Verification mode complete.")}
+              className="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white"
+            >
               Submit Verification
             </Button>
           </Card>

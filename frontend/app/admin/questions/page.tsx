@@ -1,7 +1,8 @@
 "use client";
 
-import QuestionsPage from "@/app/examiner/questions/page";
+import React from "react";
+import ExaminerQuestionsWorkspace from "@/components/ExaminerQuestionsWorkspace";
 
 export default function AdminQuestionsPage() {
-  return <QuestionsPage />;
+  return <ExaminerQuestionsWorkspace />;
 }

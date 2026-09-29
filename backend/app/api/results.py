@@ -20,6 +20,7 @@ from app.schemas.session import (
 )
 from app.services.report_service import generate_student_result_pdf, export_results_csv
 from app.services.notification_service import create_notification
+from app.services.question_translations import get_question_translations
 
 router = APIRouter(prefix="/results", tags=["Results"])
 
@@ -108,7 +109,8 @@ def build_result_submission_response(db: Session, result: Result, requester: Opt
                 ai_evaluation=None,
                 model_answer=None,
                 explanation=None,
-                evaluator_feedback=None
+                evaluator_feedback=None,
+                translations=get_question_translations(q.question_text)
             ))
         else:
             breakdown.append(QuestionResultBreakdown(
@@ -133,11 +135,15 @@ def build_result_submission_response(db: Session, result: Result, requester: Opt
                 ai_evaluation=getattr(ans, "ai_evaluation", None) if ans else None,
                 model_answer=q.model_answer or q.expected_answer,
                 explanation=q.explanation,
-                evaluator_feedback=getattr(ans, "evaluator_feedback", None) if ans else None
+                evaluator_feedback=getattr(ans, "evaluator_feedback", None) if ans else None,
+                translations=get_question_translations(q.question_text)
             ))
 
     unanswered = len(paper_q_ids) - attempted
-    passed = result.percentage >= 50.0
+    if result.status in ["PASSED", "FAILED"]:
+        passed = (result.status == "PASSED")
+    else:
+        passed = result.percentage >= 50.0
 
     sub_status = "AUTO SUBMITTED" if session and session.status in ["SUBMITTED_VIOLATION", "TIME_EXPIRED", "EXPIRED"] else "SUBMITTED"
     sub_reason = "Maximum proctoring violations reached" if session and session.status == "SUBMITTED_VIOLATION" else (
@@ -324,8 +330,10 @@ def api_review_result(
     percentage = round((final_score / result.maximum_marks) * 100, 2) if result.maximum_marks > 0 else 0.0
     passed = percentage >= 50.0
 
-    if review_in.status:
+    if review_in.status in ["PASSED", "FAILED"]:
         result.status = review_in.status
+    elif result.status in ["PASSED", "FAILED"]:
+        pass
     else:
         result.status = "PASSED" if passed else "FAILED"
 
@@ -354,6 +362,7 @@ def api_review_result(
 @router.get("/{result_id}/download/pdf")
 def api_download_result_pdf(
     result_id: int,
+    lang: str = "en",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -381,11 +390,11 @@ def api_download_result_pdf(
     result.pdf_last_downloaded_at = datetime.now(timezone.utc)
     db.commit()
 
-    pdf_bytes = generate_student_result_pdf(result, result.student, result.exam, downloaded_by=current_user)
+    pdf_bytes = generate_student_result_pdf(result, result.student, result.exam, downloaded_by=current_user, lang=lang)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=Scorecard_Exam_{result.exam_id}_{result.student_id}.pdf"}
+        headers={"Content-Disposition": f"attachment; filename=Scorecard_Exam_{result.exam_id}_{result.student_id}_{lang}.pdf"}
     )
 
 @router.get("/exam/{exam_id}", response_model=List[ExamSubmissionResult])

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Exam, QuestionSelectionRule, Subject } from "@/types";
 import { api, getErrorMessage } from "@/lib/api";
 import { Button, Alert, Badge } from "./UIComponents";
+import { useLanguage } from "@/lib/i18n";
 import { X, Plus, Trash2, Clock, Sparkles, Sliders, Layers, CheckCircle2, AlertTriangle, BookOpen, ShieldCheck, HelpCircle } from "lucide-react";
 
 interface ExamModalProps {
@@ -14,6 +15,7 @@ interface ExamModalProps {
 }
 
 export default function ExamModal({ isOpen, onClose, onSaved, initialData }: ExamModalProps) {
+  const { t } = useLanguage();
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("Mathematics");
   const [durationMinutes, setDurationMinutes] = useState(60);
@@ -146,54 +148,50 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
   };
 
   const handleRemoveRule = (index: number) => {
-    setRules(rules.filter((_, i) => i !== index));
+    setRules(rules.filter((_, idx) => idx !== index));
   };
 
-  const handleRuleChange = (index: number, field: keyof QuestionSelectionRule, val: any) => {
+  const handleRuleChange = (index: number, field: keyof QuestionSelectionRule, value: any) => {
     const updated = [...rules];
-    updated[index] = { ...updated[index], [field]: val };
+    updated[index] = { ...updated[index], [field]: value };
     setRules(updated);
   };
 
-  // Calculations & Blueprint Validation
-  const configuredRulesCount = rules.reduce((acc, r) => acc + (Number(r.count) || 0), 0);
-  const remainingCount = Number(totalQuestions) - configuredRulesCount;
+  // Compute validation
+  const configuredRulesCount = rules.reduce((sum, r) => sum + (Number(r.count) || 0), 0);
+  const remainingCount = totalQuestions - configuredRulesCount;
 
-  // Shortage check for single subject
+  // Check single subject capacity
   const singleSubjectAvailable = subjectStats[subject] || 0;
-  const singleSubjectShortage = !isMixedBlueprint && singleSubjectAvailable < Number(totalQuestions);
+  const singleSubjectShortage = !isMixedBlueprint && Number(totalQuestions) > singleSubjectAvailable;
 
-  // Shortage check for mixed rules
-  const ruleShortages = isMixedBlueprint ? rules.map(r => {
-    const targetSub = r.subject || subject;
-    const avail = subjectStats[targetSub] || 0;
+  // Check mixed rules capacity
+  const ruleShortages = rules.map((r) => {
+    const sub = r.subject || subject;
+    const avail = subjectStats[sub] || 0;
+    const req = Number(r.count) || 0;
     return {
-      subject: targetSub,
-      required: Number(r.count) || 0,
+      subject: sub,
+      required: req,
       available: avail,
-      isShort: (Number(r.count) || 0) > avail
+      isShort: req > avail,
     };
-  }) : [];
-  const hasMixedShortage = ruleShortages.some(r => r.isShort);
+  });
+  const hasMixedShortage = isMixedBlueprint && ruleShortages.some((s) => s.isShort);
 
-  const canPublish = !singleSubjectShortage && (!isMixedBlueprint || (remainingCount === 0 && !hasMixedShortage));
+  const canPublish = !singleSubjectShortage && (!isMixedBlueprint || (!hasMixedShortage && remainingCount === 0));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!startTime || !endTime) {
-      setError("Please specify both start time and end time.");
-      return;
-    }
-
     if (new Date(endTime) <= new Date(startTime)) {
-      setError("Exam End Time must be strictly after Start Time.");
+      setError("Exam window end time must be after the start time.");
       return;
     }
 
     if (!isMixedBlueprint && singleSubjectShortage) {
-      setError(`Insufficient valid ${subject} questions in database. Required: ${totalQuestions}, Available: ${singleSubjectAvailable}.`);
+      setError(`Insufficient valid ${subject} questions in PostgreSQL. Required: ${totalQuestions}, Available: ${singleSubjectAvailable}.`);
       return;
     }
 
@@ -249,26 +247,26 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#171719]/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#FFFFFF] rounded-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-[#EAE6DF] flex flex-col">
-        {/* Header with Plum accent */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#EAE6DF] sticky top-0 bg-[#FFFFFF] z-20">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-[#0D1322] rounded-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-800 text-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800 sticky top-0 bg-[#0D1322]/95 backdrop-blur-md z-20">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FEF3EC] border border-[#EAE6DF] flex items-center justify-center text-[#C85332] shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-sm">
               <Sliders className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#1C1C1F] tracking-tight">
-                {initialData ? "Edit Examination Configuration" : "Create Authoritative Examination"}
+              <h2 className="text-base font-bold text-white tracking-tight">
+                {initialData ? t("edit_exam_title") : t("create_exam_title")}
               </h2>
-              <p className="text-xs text-[#6B6B76]">
-                Configure blueprint, question quotas, timing windows, and AI proctoring constraints.
+              <p className="text-xs text-slate-400">
+                {t("exam_config_subtitle")}
               </p>
             </div>
           </div>
           <button 
             onClick={onClose} 
-            className="p-2 text-[#6B6B76] hover:text-[#1C1C1F] rounded-xl hover:bg-[#FAF8F5] transition-colors border border-transparent hover:border-[#EAE6DF]"
+            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800/60 transition-colors border border-transparent hover:border-slate-700"
           >
             <X className="h-5 w-5" />
           </button>
@@ -278,104 +276,104 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
           {error && <Alert type="error">{error}</Alert>}
 
           {/* Timing Presets Banner */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-[#FEF3EC]/60 p-3.5 rounded-xl border border-[#EAE6DF] text-xs gap-3">
-            <span className="font-semibold text-[#C85332] flex items-center gap-2">
-              <Clock className="h-4 w-4 text-[#A8A29E]" /> Quick Testing Windows:
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-[#080C14]/60 p-3.5 rounded-xl border border-slate-800/80 text-xs gap-3">
+            <span className="font-semibold text-slate-200 flex items-center gap-2">
+              <Clock className="h-4 w-4 text-cyan-400" /> {t("quick_testing_windows")}:
             </span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={applyLiveNowPreset}
-                className="px-3 py-1.5 bg-[#FFFFFF] hover:bg-[#FEF3EC] rounded-lg border border-[#EAE6DF] text-[#C85332] font-semibold text-xs shadow-xs transition-all hover:border-[#A8A29E]"
+                className="px-3 py-1.5 bg-[#0D1322] hover:bg-slate-800 rounded-lg border border-slate-700 text-indigo-300 font-semibold text-xs transition-all hover:border-indigo-500/40"
               >
-                Immediate Live Window
+                {t("immediate_live_window")}
               </button>
               <button
                 type="button"
                 onClick={applyTomorrowPreset}
-                className="px-3 py-1.5 bg-[#FFFFFF] hover:bg-[#FEF3EC] rounded-lg border border-[#EAE6DF] text-[#C85332] font-semibold text-xs shadow-xs transition-all hover:border-[#A8A29E]"
+                className="px-3 py-1.5 bg-[#0D1322] hover:bg-slate-800 rounded-lg border border-slate-700 text-cyan-300 font-semibold text-xs transition-all hover:border-cyan-500/40"
               >
-                Tomorrow 10:00 AM
+                {t("tomorrow_10am")}
               </button>
             </div>
           </div>
 
           {/* Basic Exam Information */}
-          <div className="bg-[#FFFFFF] p-5 rounded-2xl border border-[#EAE6DF] space-y-4">
-            <h3 className="text-xs font-bold text-[#C85332] uppercase tracking-wider flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-[#A8A29E]" />
-              Basic Parameters
+          <div className="bg-[#080C14]/40 p-5 rounded-2xl border border-slate-800/80 space-y-4">
+            <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-indigo-400" />
+              {t("basic_parameters")}
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5 sm:col-span-2">
-                <label className="text-xs font-semibold text-[#1C1C1F]">Exam Title *</label>
+                <label className="text-xs font-semibold text-slate-200">{t("exam_title")} *</label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. National Level Computer Science & Mathematics Examination 2026"
-                  className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border rounded-xl border-[#EAE6DF] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:border-[#C85332] focus:outline-none transition-all"
+                  className="w-full px-3.5 py-2.5 text-xs bg-[#080C14] border rounded-xl border-slate-800 text-white placeholder-slate-500 focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[#1C1C1F]">Duration (Minutes) *</label>
+                <label className="text-xs font-semibold text-slate-200">{t("duration")} ({t("minutes")}) *</label>
                 <input
                   type="number"
                   required
                   min={1}
                   value={durationMinutes}
                   onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border rounded-xl border-[#EAE6DF] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:border-[#C85332] focus:outline-none transition-all"
+                  className="w-full px-3.5 py-2.5 text-xs bg-[#080C14] border rounded-xl border-slate-800 text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[#1C1C1F]">Maximum Marks *</label>
+                <label className="text-xs font-semibold text-slate-200">{t("total_marks")} *</label>
                 <input
                   type="number"
                   required
                   min={1}
                   value={maximumMarks}
                   onChange={(e) => setMaximumMarks(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border rounded-xl border-[#EAE6DF] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:border-[#C85332] focus:outline-none transition-all"
+                  className="w-full px-3.5 py-2.5 text-xs bg-[#080C14] border rounded-xl border-slate-800 text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[#1C1C1F]">Start Time (Authoritative) *</label>
+                <label className="text-xs font-semibold text-slate-200">{t("start_time")} ({t("server_authoritative")}) *</label>
                 <input
                   type="datetime-local"
                   required
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border rounded-xl border-[#EAE6DF] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:border-[#C85332] focus:outline-none transition-all"
+                  className="w-full px-3.5 py-2.5 text-xs bg-[#080C14] border rounded-xl border-slate-800 text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[#1C1C1F]">End Time (Authoritative) *</label>
+                <label className="text-xs font-semibold text-slate-200">{t("end_time")} ({t("server_authoritative")}) *</label>
                 <input
                   type="datetime-local"
                   required
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border rounded-xl border-[#EAE6DF] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:border-[#C85332] focus:outline-none transition-all"
+                  className="w-full px-3.5 py-2.5 text-xs bg-[#080C14] border rounded-xl border-slate-800 text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                 />
               </div>
             </div>
           </div>
 
           {/* Question Count Selection */}
-          <div className="p-5 bg-[#FAF8F5] rounded-2xl border border-[#EAE6DF] space-y-3.5">
+          <div className="p-5 bg-[#080C14]/40 rounded-2xl border border-slate-800/80 space-y-3.5">
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-xs font-bold text-[#C85332] uppercase tracking-wide">
-                  Total Question Count (Dynamic & Configurable)
+                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wide">
+                  {t("total_questions")}
                 </label>
-                <p className="text-[11px] text-[#6B6B76]">
+                <p className="text-[11px] text-slate-400">
                   Select a standardized quota or enter a custom integer (never fixed to 100).
                 </p>
               </div>
@@ -386,7 +384,7 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
                   max={500}
                   value={totalQuestions}
                   onChange={(e) => setTotalQuestions(Math.max(1, Number(e.target.value)))}
-                  className="w-24 px-3 py-2 text-center font-bold text-sm border-2 rounded-xl border-[#C85332] text-[#C85332] bg-[#FFFFFF] shadow-xs focus:outline-none"
+                  className="w-24 px-3 py-2 text-center font-bold text-sm border-2 rounded-xl border-indigo-500 text-indigo-300 bg-[#080C14] shadow-sm focus:outline-none"
                 />
               </div>
             </div>
@@ -399,65 +397,65 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
                   onClick={() => setTotalQuestions(count)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                     totalQuestions === count
-                      ? "bg-[#C85332] text-[#FFFFFF] shadow-xs"
-                      : "bg-[#FFFFFF] text-[#1C1C1F] border border-[#EAE6DF] hover:bg-[#FEF3EC] hover:border-[#A8A29E]"
+                      ? "bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30"
+                      : "bg-[#080C14] text-slate-300 border border-slate-800 hover:bg-slate-800/60 hover:border-slate-700"
                   }`}
                 >
-                  {count} Questions
+                  {count} {t("questions")}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Blueprint Mode: Mode A (Single) vs Mode B (Mixed) */}
-          <div className="space-y-4 p-5 rounded-2xl border border-[#EAE6DF] bg-[#FFFFFF]">
+          <div className="space-y-4 p-5 rounded-2xl border border-slate-800/80 bg-[#080C14]/40">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#C85332] flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-[#A8A29E]" />
-                  Exam Structure & Blueprint Mode
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-indigo-400" />
+                  {t("blueprint_mode")}
                 </span>
-                <p className="text-[11px] text-[#6B6B76]">Choose between single subject allocation or multi-subject blueprint distribution.</p>
+                <p className="text-[11px] text-slate-400">Choose between single subject allocation or multi-subject blueprint distribution.</p>
               </div>
-              <div className="flex items-center gap-1 bg-[#FEF3EC] p-1 rounded-xl border border-[#EAE6DF]">
+              <div className="flex items-center gap-1 bg-[#080C14] p-1 rounded-xl border border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsMixedBlueprint(false)}
                   className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                     !isMixedBlueprint 
-                      ? "bg-[#C85332] text-[#FFFFFF] shadow-xs" 
-                      : "text-[#6B6B76] hover:text-[#1C1C1F]"
+                      ? "bg-indigo-600 text-white shadow-sm" 
+                      : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  Single Subject
+                  {t("single_subject")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsMixedBlueprint(true)}
                   className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                     isMixedBlueprint 
-                      ? "bg-[#C85332] text-[#FFFFFF] shadow-xs" 
-                      : "text-[#6B6B76] hover:text-[#1C1C1F]"
+                      ? "bg-indigo-600 text-white shadow-sm" 
+                      : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  Mixed Blueprint
+                  {t("mixed_blueprint")}
                 </button>
               </div>
             </div>
 
             {/* Mode A: Single Subject */}
             {!isMixedBlueprint && (
-              <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#EAE6DF] space-y-3">
+              <div className="p-4 bg-[#080C14]/70 rounded-xl border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-[#1C1C1F]">Select Subject *</label>
-                  <span className="text-xs font-medium text-[#6B6B76]">
-                    Available in Bank: <strong className="text-[#C85332] font-bold">{singleSubjectAvailable}</strong>
+                  <label className="text-xs font-semibold text-slate-200">Select Subject *</label>
+                  <span className="text-xs font-medium text-slate-400">
+                    Available in Bank: <strong className="text-indigo-400 font-bold">{singleSubjectAvailable}</strong>
                   </span>
                 </div>
                 <select
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-[#EAE6DF] text-[#1C1C1F] bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:outline-none"
+                  className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-slate-800 text-white bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none"
                 >
                   {availableSubjects.map((s) => (
                     <option key={s.id} value={s.name}>
@@ -467,7 +465,7 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
                 </select>
 
                 {singleSubjectShortage && (
-                  <div className="flex items-center gap-2.5 text-xs font-semibold text-[#9B3D4A] bg-[#9B3D4A]/10 p-3 rounded-xl border border-[#9B3D4A]/20">
+                  <div className="flex items-center gap-2.5 text-xs font-semibold text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span>
                       Insufficient valid {subject} questions in PostgreSQL. Required: {totalQuestions}, Available: {singleSubjectAvailable}.
@@ -475,7 +473,7 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
                   </div>
                 )}
                 {!singleSubjectShortage && (
-                  <p className="text-[11px] text-[#2B7853] font-semibold flex items-center gap-1.5">
+                  <p className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1.5">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Exact {totalQuestions} questions will be randomly sampled from {subject} without cross-subject contamination.
                   </p>
                 )}
@@ -484,40 +482,40 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
 
             {/* Mode B: Mixed Subject / Blueprint */}
             {isMixedBlueprint && (
-              <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#EAE6DF] space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#FFFFFF] p-3.5 rounded-xl border border-[#EAE6DF] gap-3">
+              <div className="p-4 bg-[#080C14]/70 rounded-xl border border-slate-800 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#0D1322] p-3.5 rounded-xl border border-slate-800 gap-3">
                   <div className="text-xs flex items-center flex-wrap gap-2">
-                    <span className="font-semibold text-[#6B6B76]">Required:</span>
-                    <strong className="text-[#1C1C1F] font-bold">{totalQuestions}</strong>
-                    <span className="text-[#EAE6DF]">|</span>
-                    <span className="font-semibold text-[#6B6B76]">Configured:</span>
-                    <strong className={configuredRulesCount === totalQuestions ? "text-[#2B7853] font-bold" : "text-[#B7791F] font-bold"}>
+                    <span className="font-semibold text-slate-400">Required:</span>
+                    <strong className="text-white font-bold">{totalQuestions}</strong>
+                    <span className="text-slate-700">|</span>
+                    <span className="font-semibold text-slate-400">Configured:</span>
+                    <strong className={configuredRulesCount === totalQuestions ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
                       {configuredRulesCount}
                     </strong>
-                    <span className="text-[#EAE6DF]">|</span>
-                    <span className="font-semibold text-[#6B6B76]">Remaining:</span>
-                    <strong className={remainingCount === 0 ? "text-[#2B7853] font-bold" : "text-[#9B3D4A] font-bold"}>
+                    <span className="text-slate-700">|</span>
+                    <span className="font-semibold text-slate-400">Remaining:</span>
+                    <strong className={remainingCount === 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
                       {remainingCount}
                     </strong>
                   </div>
                   <button
                     type="button"
                     onClick={handleAddRule}
-                    className="px-3 py-1.5 bg-[#FEF3EC] hover:bg-[#EAE6DF] text-[#C85332] font-semibold text-xs rounded-xl border border-[#EAE6DF] flex items-center gap-1.5 transition-colors self-start sm:self-auto"
+                    className="px-3 py-1.5 bg-[#080C14] hover:bg-slate-800 text-indigo-400 font-semibold text-xs rounded-xl border border-slate-800 flex items-center gap-1.5 transition-colors self-start sm:self-auto"
                   >
                     <Plus className="h-3.5 w-3.5" /> Add Blueprint Rule
                   </button>
                 </div>
 
                 {remainingCount !== 0 && (
-                  <div className="text-xs font-semibold text-[#B7791F] bg-[#B7791F]/10 p-3 rounded-xl border border-[#B7791F]/20 flex items-center gap-2">
+                  <div className="text-xs font-semibold text-amber-400 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20 flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     Blueprint total rules count must equal exam question count (Remaining to allocate: {remainingCount}).
                   </div>
                 )}
 
                 {hasMixedShortage && (
-                  <div className="text-xs font-semibold text-[#9B3D4A] bg-[#9B3D4A]/10 p-3 rounded-xl border border-[#9B3D4A]/20 flex items-center gap-2">
+                  <div className="text-xs font-semibold text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     One or more blueprint rules exceed the available questions in PostgreSQL database.
                   </div>
@@ -533,7 +531,7 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
                       <div
                         key={idx}
                         className={`p-3 rounded-xl border flex flex-wrap items-center gap-2.5 text-xs transition-colors ${
-                          isShort ? "bg-[#9B3D4A]/5 border-[#9B3D4A]/30" : "bg-[#FFFFFF] border-[#EAE6DF] hover:border-[#A8A29E]"
+                          isShort ? "bg-rose-500/10 border-rose-500/30" : "bg-[#0D1322] border-slate-800 hover:border-slate-700"
                         }`}
                       >
                         {/* Subject */}
@@ -541,7 +539,7 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
                           <select
                             value={rule.subject || ""}
                             onChange={(e) => handleRuleChange(idx, "subject", e.target.value)}
-                            className="w-full px-2.5 py-1.5 border rounded-lg border-[#EAE6DF] text-[#1C1C1F] font-medium bg-[#FAF8F5] focus:bg-[#FFFFFF] focus:ring-1 focus:ring-[#C85332]"
+                            className="w-full px-2.5 py-1.5 border rounded-lg border-slate-800 text-slate-100 font-medium bg-[#080C14] focus:bg-[#0D1322] focus:ring-1 focus:ring-indigo-500"
                           >
                             {availableSubjects.map((s) => (
                               <option key={s.id} value={s.name}>
@@ -556,7 +554,7 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
                           <select
                             value={rule.difficulty || "MEDIUM"}
                             onChange={(e) => handleRuleChange(idx, "difficulty", e.target.value)}
-                            className="w-full px-2.5 py-1.5 border rounded-lg border-[#EAE6DF] text-[#1C1C1F] bg-[#FAF8F5] focus:bg-[#FFFFFF] focus:ring-1 focus:ring-[#C85332]"
+                            className="w-full px-2.5 py-1.5 border rounded-lg border-slate-800 text-slate-100 bg-[#080C14] focus:bg-[#0D1322] focus:ring-1 focus:ring-indigo-500"
                           >
                             <option value="EASY">Easy</option>
                             <option value="MEDIUM">Medium</option>
@@ -569,7 +567,7 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
                           <select
                             value={rule.question_type || "MCQ"}
                             onChange={(e) => handleRuleChange(idx, "question_type", e.target.value)}
-                            className="w-full px-2.5 py-1.5 border rounded-lg border-[#EAE6DF] text-[#1C1C1F] bg-[#FAF8F5] focus:bg-[#FFFFFF] focus:ring-1 focus:ring-[#C85332]"
+                            className="w-full px-2.5 py-1.5 border rounded-lg border-slate-800 text-slate-100 bg-[#080C14] focus:bg-[#0D1322] focus:ring-1 focus:ring-indigo-500"
                           >
                             <option value="MCQ">MCQ (Single)</option>
                             <option value="MULTI_SELECT">Multi Select</option>
@@ -585,21 +583,21 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
                             min={1}
                             value={rule.count}
                             onChange={(e) => handleRuleChange(idx, "count", Number(e.target.value))}
-                            className="w-full px-2.5 py-1.5 border rounded-lg border-[#EAE6DF] text-[#1C1C1F] font-bold text-center bg-[#FAF8F5] focus:bg-[#FFFFFF] focus:ring-1 focus:ring-[#C85332]"
+                            className="w-full px-2.5 py-1.5 border rounded-lg border-slate-800 text-white font-bold text-center bg-[#080C14] focus:bg-[#0D1322] focus:ring-1 focus:ring-indigo-500"
                             placeholder="Count"
                           />
                         </div>
 
                         {/* Available & Delete */}
                         <div className="flex items-center gap-2">
-                          <span className={`px-2 py-1 rounded-lg text-[11px] font-semibold ${isShort ? "bg-[#9B3D4A]/10 text-[#9B3D4A]" : "bg-[#FEF3EC] text-[#C85332]"}`}>
+                          <span className={`px-2 py-1 rounded-lg text-[11px] font-semibold ${isShort ? "bg-rose-500/10 text-rose-400" : "bg-indigo-500/10 text-indigo-300"}`}>
                             Avail: {avail}
                           </span>
                           {rules.length > 1 && (
                             <button
                               type="button"
                               onClick={() => handleRemoveRule(idx)}
-                              className="p-1.5 text-[#6B6B76] hover:text-[#9B3D4A] rounded-lg transition-colors"
+                              className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg transition-colors"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -614,62 +612,62 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
           </div>
 
           {/* Scoring & Proctoring Rules */}
-          <div className="space-y-4 pt-3 border-t border-[#EAE6DF]">
-            <h3 className="text-xs font-bold text-[#C85332] uppercase tracking-wider flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-[#A8A29E]" />
-              Scoring & Proctoring Constraints
+          <div className="space-y-4 pt-3 border-t border-slate-800">
+            <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-indigo-400" />
+              {t("proctoring_constraints")}
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <label className="flex items-start gap-3 p-3.5 rounded-xl border border-[#EAE6DF] hover:border-[#A8A29E] hover:bg-[#FAF8F5] cursor-pointer transition-all">
+              <label className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-800 hover:border-slate-700 hover:bg-[#080C14]/60 cursor-pointer transition-all">
                 <input
                   type="checkbox"
                   checked={negativeMarkingEnabled}
                   onChange={(e) => setNegativeMarkingEnabled(e.target.checked)}
-                  className="rounded text-[#C85332] focus:ring-[#C85332] h-4 w-4 mt-0.5"
+                  className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 mt-0.5 bg-[#080C14] border-slate-700"
                 />
                 <div>
-                  <span className="font-semibold text-[#1C1C1F]">Negative Marking</span>
-                  <span className="block text-[11px] text-[#6B6B76]">Deduct penalty marks for incorrect selections</span>
+                  <span className="font-semibold text-slate-200">{t("negative_marking")}</span>
+                  <span className="block text-[11px] text-slate-400">Deduct penalty marks for incorrect selections</span>
                 </div>
               </label>
 
-              <label className="flex items-start gap-3 p-3.5 rounded-xl border border-[#EAE6DF] hover:border-[#A8A29E] hover:bg-[#FAF8F5] cursor-pointer transition-all">
+              <label className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-800 hover:border-slate-700 hover:bg-[#080C14]/60 cursor-pointer transition-all">
                 <input
                   type="checkbox"
                   checked={webcamMonitoringEnabled}
                   onChange={(e) => setWebcamMonitoringEnabled(e.target.checked)}
-                  className="rounded text-[#C85332] focus:ring-[#C85332] h-4 w-4 mt-0.5"
+                  className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 mt-0.5 bg-[#080C14] border-slate-700"
                 />
                 <div>
-                  <span className="font-semibold text-[#1C1C1F]">Webcam Proctoring</span>
-                  <span className="block text-[11px] text-[#6B6B76]">Real-time AI face presence and gaze verification</span>
+                  <span className="font-semibold text-slate-200">{t("webcam_monitoring")}</span>
+                  <span className="block text-[11px] text-slate-400">Real-time AI face presence and gaze verification</span>
                 </div>
               </label>
 
-              <label className="flex items-start gap-3 p-3.5 rounded-xl border border-[#EAE6DF] hover:border-[#A8A29E] hover:bg-[#FAF8F5] cursor-pointer transition-all">
+              <label className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-800 hover:border-slate-700 hover:bg-[#080C14]/60 cursor-pointer transition-all">
                 <input
                   type="checkbox"
                   checked={randomizeQuestions}
                   onChange={(e) => setRandomizeQuestions(e.target.checked)}
-                  className="rounded text-[#C85332] focus:ring-[#C85332] h-4 w-4 mt-0.5"
+                  className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 mt-0.5 bg-[#080C14] border-slate-700"
                 />
                 <div>
-                  <span className="font-semibold text-[#1C1C1F]">Randomize Questions</span>
-                  <span className="block text-[11px] text-[#6B6B76]">Unique deterministic sequence per candidate</span>
+                  <span className="font-semibold text-slate-200">{t("randomize_questions")}</span>
+                  <span className="block text-[11px] text-slate-400">Unique deterministic sequence per candidate</span>
                 </div>
               </label>
 
-              <label className="flex items-start gap-3 p-3.5 rounded-xl border border-[#EAE6DF] hover:border-[#A8A29E] hover:bg-[#FAF8F5] cursor-pointer transition-all">
+              <label className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-800 hover:border-slate-700 hover:bg-[#080C14]/60 cursor-pointer transition-all">
                 <input
                   type="checkbox"
                   checked={randomizeOptions}
                   onChange={(e) => setRandomizeOptions(e.target.checked)}
-                  className="rounded text-[#C85332] focus:ring-[#C85332] h-4 w-4 mt-0.5"
+                  className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 mt-0.5 bg-[#080C14] border-slate-700"
                 />
                 <div>
-                  <span className="font-semibold text-[#1C1C1F]">Randomize Options</span>
-                  <span className="block text-[11px] text-[#6B6B76]">Dynamic option shuffling with answer integrity</span>
+                  <span className="font-semibold text-slate-200">{t("randomize_options")}</span>
+                  <span className="block text-[11px] text-slate-400">Dynamic option shuffling with answer integrity</span>
                 </div>
               </label>
             </div>
@@ -677,20 +675,20 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#1C1C1F]">Max Tab-Switch Warnings</label>
+              <label className="text-xs font-semibold text-slate-200">{t("max_tab_warnings")}</label>
               <input
                 type="number"
                 min={0}
                 max={10}
                 value={maxTabSwitchWarnings}
                 onChange={(e) => setMaxTabSwitchWarnings(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border rounded-xl border-[#EAE6DF] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:outline-none transition-all"
+                className="w-full px-3.5 py-2.5 text-xs bg-[#080C14] border rounded-xl border-slate-800 text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:outline-none transition-all"
               />
-              <span className="text-[10px] text-[#6B6B76]">0 = immediate auto-submit on 1st window departure</span>
+              <span className="text-[10px] text-slate-400">0 = immediate auto-submit on 1st window departure</span>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#1C1C1F]">Gaze Sensitivity Threshold (0.1 - 1.0)</label>
+              <label className="text-xs font-semibold text-slate-200">Gaze Sensitivity Threshold (0.1 - 1.0)</label>
               <input
                 type="number"
                 step="0.1"
@@ -698,25 +696,25 @@ export default function ExamModal({ isOpen, onClose, onSaved, initialData }: Exa
                 max={1.0}
                 value={gazeSensitivity}
                 onChange={(e) => setGazeSensitivity(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border rounded-xl border-[#EAE6DF] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:outline-none transition-all"
+                className="w-full px-3.5 py-2.5 text-xs bg-[#080C14] border rounded-xl border-slate-800 text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:outline-none transition-all"
               />
-              <span className="text-[10px] text-[#6B6B76]">Head turn and gaze divergence detection tolerance</span>
+              <span className="text-[10px] text-slate-400">Head turn and gaze divergence detection tolerance</span>
             </div>
           </div>
 
           {/* Form Actions */}
-          <div className="flex items-center justify-end gap-3 pt-5 border-t border-[#EAE6DF]">
-            <Button type="button" variant="outline" onClick={onClose} className="text-xs py-2.5 px-5">
-              Cancel
+          <div className="flex items-center justify-end gap-3 pt-5 border-t border-slate-800">
+            <Button type="button" variant="outline" onClick={onClose} className="text-xs py-2.5 px-5 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/60">
+              {t("cancel")}
             </Button>
             <Button
               type="submit"
               variant="primary"
               disabled={!canPublish || isSubmitting}
               isLoading={isSubmitting}
-              className="text-xs py-2.5 px-6 shadow-sm"
+              className="text-xs py-2.5 px-6 shadow-md shadow-indigo-500/20"
             >
-              {initialData ? "Save Changes" : "Publish Examination"}
+              {initialData ? t("save_changes") : t("publish_exam")}
             </Button>
           </div>
         </form>

@@ -565,7 +565,7 @@ def finalize_and_grade_session(
             negative_marks_deducted=total_negative_deducted,
             maximum_marks=existing_result.maximum_marks,
             percentage=existing_result.percentage,
-            passed=existing_result.percentage >= 50.0,
+            passed=(existing_result.status == "PASSED") if existing_result.status in ["PASSED", "FAILED"] else (existing_result.percentage >= 50.0),
             status=existing_result.status,
             result_status=existing_result.status,
             submission_status=sub_status,

@@ -9,6 +9,7 @@ from app.models.session import ExamSession
 from app.models.question import QuestionBank, Option, QuestionType, DifficultyLevel
 from app.schemas.exam import PaperGenerateResponse
 from app.schemas.question import QuestionStudentResponse, OptionStudentResponse
+from app.services.question_translations import get_question_translations, get_option_translations
 
 def ensure_utc(dt: datetime) -> datetime:
     if dt is None:
@@ -170,12 +171,13 @@ def generate_paper_for_student(
             opts = list(opts)
             rng.shuffle(opts)
 
-        # STRIP `is_correct` to ensure exam integrity
+        # STRIP `is_correct` to ensure exam integrity, attach translations
         safe_options = [
             OptionStudentResponse(
                 id=opt.id,
                 option_text=opt.option_text,
-                option_order=idx
+                option_order=idx,
+                translations=get_option_translations(opt.option_text)
             )
             for idx, opt in enumerate(opts)
         ]
@@ -188,7 +190,8 @@ def generate_paper_for_student(
                 question_type=q.question_type,
                 difficulty=q.difficulty,
                 marks=q.marks,
-                options=safe_options
+                options=safe_options,
+                translations=get_question_translations(q.question_text)
             )
         )
 

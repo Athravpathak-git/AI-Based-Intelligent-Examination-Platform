@@ -24,6 +24,7 @@ import {
   Save,
 } from "lucide-react";
 import ToastContainer, { ToastMessage } from "@/components/Toast";
+import { useLanguage } from "@/lib/i18n";
 
 interface ProfileFormData {
   name: string;
@@ -46,6 +47,7 @@ interface ProfileFormData {
 
 export default function StudentProfilePage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [profileData, setProfileData] = useState<ProfileFormData>({
     name: user?.name || "",
     mobile_number: "",
@@ -172,9 +174,9 @@ export default function StudentProfilePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1C1C1F]">Student Profile & Academic Records</h1>
-          <p className="text-sm text-[#6B6B76]">
-            Institutional credentials, enrollment records, and account security
+          <h1 className="text-2xl font-bold text-white tracking-tight">{t("my_account_profile")}</h1>
+          <p className="text-sm text-slate-400">
+            {t("account_profile_subtitle")}
           </p>
         </div>
 
@@ -183,9 +185,9 @@ export default function StudentProfilePage() {
             <Button
               variant="primary"
               onClick={() => setIsEditing(true)}
-              className="text-xs py-2 px-3.5 gap-1.5 shadow-sm"
+              className="text-xs py-2 px-3.5 gap-1.5 shadow-lg shadow-indigo-500/20 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold"
             >
-              <Edit3 className="h-3.5 w-3.5" /> Edit Profile Records
+              <Edit3 className="h-3.5 w-3.5" /> {t("edit_profile")}
             </Button>
           ) : (
             <Button
@@ -194,9 +196,9 @@ export default function StudentProfilePage() {
                 setIsEditing(false);
                 fetchFullProfile();
               }}
-              className="text-xs py-2 px-3.5 gap-1.5 text-[#6B6B76]"
+              className="text-xs py-2 px-3.5 gap-1.5 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800"
             >
-              <X className="h-3.5 w-3.5" /> Cancel Edits
+              <X className="h-3.5 w-3.5" /> {t("cancel_edit")}
             </Button>
           )}
         </div>
@@ -207,44 +209,46 @@ export default function StudentProfilePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Col: ID Badge Card & Governance */}
         <div className="space-y-6 lg:col-span-1">
-          <Card className="flex flex-col items-center text-center p-6 space-y-4 bg-white border-[#EAE6DF] shadow-sm">
-            <div className="h-24 w-24 rounded-2xl bg-[#E06A26] text-white flex items-center justify-center text-3xl font-extrabold shadow-sm border border-[#C95716]">
+          <Card className="flex flex-col items-center text-center p-6 space-y-4 bg-[#0D1322] border-slate-800 shadow-xl">
+            <div className="h-24 w-24 rounded-2xl bg-gradient-to-tr from-indigo-600 to-cyan-500 text-white flex items-center justify-center text-3xl font-extrabold shadow-md border border-indigo-400/30">
               {profileData.name?.charAt(0).toUpperCase() || "S"}
             </div>
 
             <div className="space-y-1">
-              <h2 className="text-lg font-bold text-[#1C1C1F]">{profileData.name || user?.name}</h2>
-              <p className="text-xs text-[#6B6B76] font-mono">{user?.email}</p>
+              <h2 className="text-lg font-bold text-white">{profileData.name || user?.name}</h2>
+              <p className="text-xs text-slate-400 font-mono">{user?.email}</p>
             </div>
 
-            <div className="w-full pt-4 border-t border-[#EAE6DF] space-y-3 text-left">
-              <div className="bg-[#FEF3EC] p-3.5 rounded-xl border border-[#EAE6DF] space-y-1">
-                <div className="text-[10px] uppercase font-bold tracking-wider text-[#E06A26] flex items-center gap-1">
-                  <Hash className="h-3 w-3" /> Official Registration Number
+            <div className="w-full pt-4 border-t border-slate-800 space-y-3 text-left">
+              <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1">
+                <div className="text-[10px] uppercase font-bold tracking-wider text-indigo-400 flex items-center gap-1">
+                  <Hash className="h-3 w-3" /> {t("registration_number")}
                 </div>
-                <div className="text-sm font-mono font-bold text-[#1C1C1F]">
+                <div className="text-sm font-mono font-bold text-white">
                   {user?.registration_number || "STU-PENDING"}
                 </div>
-                <span className="text-[10px] text-[#6B6B76] block">
+                <span className="text-[10px] text-slate-500 block">
                   Immutable Institutional ID
                 </span>
               </div>
 
               <div className="flex items-center justify-between text-xs px-1">
-                <span className="text-[#6B6B76]">Platform Role</span>
-                <Badge variant="emerald">{user?.role || "STUDENT"}</Badge>
+                <span className="text-slate-400">Role</span>
+                <Badge variant="emerald">
+                  {user?.role || "STUDENT"}
+                </Badge>
               </div>
 
               <div className="flex items-center justify-between text-xs px-1">
-                <span className="text-[#6B6B76]">Account Status</span>
-                <span className="inline-flex items-center gap-1 text-[#2B7853] font-semibold">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Active & Verified
+                <span className="text-slate-400">{t("user_status")}</span>
+                <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> {t("active_status")}
                 </span>
               </div>
 
               <div className="flex items-center justify-between text-xs px-1">
-                <span className="text-[#6B6B76]">Registered On</span>
-                <span className="text-[#1C1C1F] font-medium">
+                <span className="text-slate-400">{t("registered_badge")}</span>
+                <span className="text-slate-200 font-medium">
                   {user?.created_at ? new Date(user.created_at).toLocaleDateString() : "Active"}
                 </span>
               </div>
@@ -252,23 +256,23 @@ export default function StudentProfilePage() {
           </Card>
 
           {/* Quick Academic Summary Box */}
-          <Card className="p-5 space-y-3 bg-[#FAF8F5]/70 border-[#EAE6DF]">
-            <h3 className="text-xs font-bold text-[#1C1C1F] uppercase tracking-wider flex items-center gap-1.5">
-              <GraduationCap className="h-4 w-4 text-[#E06A26]" />
-              Academic Status
+          <Card className="p-5 space-y-3 bg-[#0D1322] border-slate-800 shadow-xl">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+              <GraduationCap className="h-4 w-4 text-indigo-400" />
+              {t("academic_information")}
             </h3>
             <div className="space-y-2 text-xs">
-              <div className="flex justify-between border-b border-[#EAE6DF] pb-1.5">
-                <span className="text-[#6B6B76]">Course:</span>
-                <span className="font-semibold text-[#1C1C1F]">{profileData.course || "Not Configured"}</span>
+              <div className="flex justify-between border-b border-slate-800/80 pb-1.5">
+                <span className="text-slate-400">{t("course_degree")}:</span>
+                <span className="font-semibold text-white">{profileData.course || "Not Configured"}</span>
               </div>
-              <div className="flex justify-between border-b border-[#EAE6DF] pb-1.5">
-                <span className="text-[#6B6B76]">Semester/Year:</span>
-                <span className="font-semibold text-[#1C1C1F]">{profileData.year_semester || "Not Configured"}</span>
+              <div className="flex justify-between border-b border-slate-800/80 pb-1.5">
+                <span className="text-slate-400">{t("year_semester")}:</span>
+                <span className="font-semibold text-white">{profileData.year_semester || "Not Configured"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#6B6B76]">Graduation Year:</span>
-                <span className="font-semibold text-[#1C1C1F]">{profileData.graduation_year || "Pending"}</span>
+                <span className="text-slate-400">{t("graduation_year")}:</span>
+                <span className="font-semibold text-white">{profileData.graduation_year || "Pending"}</span>
               </div>
             </div>
           </Card>
@@ -278,22 +282,22 @@ export default function StudentProfilePage() {
         <div className="space-y-6 lg:col-span-2">
           <form onSubmit={handleSave} className="space-y-6">
             {/* Section 1: Academic & Institutional Information */}
-            <Card className="p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-[#EAE6DF] pb-3">
+            <Card className="p-6 space-y-4 bg-[#0D1322] border-slate-800 shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-[#FEF3EC] text-[#E06A26]">
+                  <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                     <Building2 className="h-4 w-4" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-[#1C1C1F] text-sm">Academic & Institutional Records</h3>
-                    <p className="text-xs text-[#6B6B76]">College, University, Degree, and Semester details</p>
+                    <h3 className="font-bold text-white text-sm">{t("academic_information")}</h3>
+                    <p className="text-xs text-slate-400">{t("tab_academic")}</p>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">College / Institute</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("college_institution")}</label>
                   <input
                     type="text"
                     disabled={!isEditing}
@@ -302,14 +306,14 @@ export default function StudentProfilePage() {
                     placeholder="e.g. National Institute of Technology"
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">University / Board</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("university")}</label>
                   <input
                     type="text"
                     disabled={!isEditing}
@@ -318,14 +322,14 @@ export default function StudentProfilePage() {
                     placeholder="e.g. State Technological University"
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">Degree / Course</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("course_degree")}</label>
                   <input
                     type="text"
                     disabled={!isEditing}
@@ -334,14 +338,14 @@ export default function StudentProfilePage() {
                     placeholder="e.g. Bachelor of Technology (B.Tech)"
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">Specialization / Branch</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("specialization_dept")}</label>
                   <input
                     type="text"
                     disabled={!isEditing}
@@ -350,14 +354,14 @@ export default function StudentProfilePage() {
                     placeholder="e.g. Computer Science and Engineering"
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">Year / Semester</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("year_semester")}</label>
                   <input
                     type="text"
                     disabled={!isEditing}
@@ -366,14 +370,14 @@ export default function StudentProfilePage() {
                     placeholder="e.g. Year 4, Semester 8"
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">Enrollment / Roll Number</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("enrollment_number")}</label>
                   <input
                     type="text"
                     disabled={!isEditing}
@@ -382,14 +386,14 @@ export default function StudentProfilePage() {
                     placeholder="e.g. 2022-CSE-0482"
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">Graduation Year</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("graduation_year")}</label>
                   <input
                     type="number"
                     disabled={!isEditing}
@@ -398,8 +402,8 @@ export default function StudentProfilePage() {
                     placeholder="e.g. 2026"
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
@@ -407,22 +411,22 @@ export default function StudentProfilePage() {
             </Card>
 
             {/* Section 2: Personal & Contact Information */}
-            <Card className="p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-[#EAE6DF] pb-3">
+            <Card className="p-6 space-y-4 bg-[#0D1322] border-slate-800 shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-emerald-50 text-[#2B7853]">
+                  <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                     <User className="h-4 w-4" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-[#1C1C1F] text-sm">Personal & Contact Details</h3>
-                    <p className="text-xs text-[#6B6B76]">Contact information, location, and communication details</p>
+                    <h3 className="font-bold text-white text-sm">{t("address_details")}</h3>
+                    <p className="text-xs text-slate-400">{t("tab_address")}</p>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">Full Name</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("full_name")}</label>
                   <input
                     type="text"
                     disabled={!isEditing}
@@ -431,16 +435,16 @@ export default function StudentProfilePage() {
                     onChange={(e) => handleChange("name", e.target.value)}
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">Mobile / Phone Number</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("mobile_number")}</label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-[#6B6B76]">
+                    <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-500">
                       <Phone className="h-3.5 w-3.5" />
                     </div>
                     <input
@@ -451,15 +455,15 @@ export default function StudentProfilePage() {
                       placeholder="+91 98765 43210"
                       className={`w-full pl-8 pr-3 py-2 text-xs border rounded-lg transition-colors ${
                         isEditing
-                          ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                          : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                          ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                          : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                       }`}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">Date of Birth</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("date_of_birth")}</label>
                   <input
                     type="date"
                     disabled={!isEditing}
@@ -467,34 +471,34 @@ export default function StudentProfilePage() {
                     onChange={(e) => handleChange("date_of_birth", e.target.value)}
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">Gender</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("gender")}</label>
                   <select
                     disabled={!isEditing}
                     value={profileData.gender}
                     onChange={(e) => handleChange("gender", e.target.value)}
-                    className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors bg-white ${
+                    className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   >
-                    <option value="">Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                    <option value="Prefer not to say">Prefer not to say</option>
+                    <option value="" className="bg-slate-900 text-slate-300">{t("gender")}</option>
+                    <option value="Male" className="bg-slate-900 text-slate-300">Male</option>
+                    <option value="Female" className="bg-slate-900 text-slate-300">Female</option>
+                    <option value="Other" className="bg-slate-900 text-slate-300">Other</option>
+                    <option value="Prefer not to say" className="bg-slate-900 text-slate-300">Prefer not to say</option>
                   </select>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">Street Address</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("address_line")}</label>
                   <input
                     type="text"
                     disabled={!isEditing}
@@ -503,14 +507,14 @@ export default function StudentProfilePage() {
                     placeholder="Residential address / hostel address"
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">City</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("city")}</label>
                   <input
                     type="text"
                     disabled={!isEditing}
@@ -519,14 +523,14 @@ export default function StudentProfilePage() {
                     placeholder="e.g. Bengaluru"
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">State / Province</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("state")}</label>
                   <input
                     type="text"
                     disabled={!isEditing}
@@ -535,14 +539,14 @@ export default function StudentProfilePage() {
                     placeholder="e.g. Karnataka"
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">PIN / Postal Code</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("pin_code")}</label>
                   <input
                     type="text"
                     disabled={!isEditing}
@@ -551,14 +555,14 @@ export default function StudentProfilePage() {
                     placeholder="e.g. 560001"
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1C1F] mb-1">Country</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">{t("country")}</label>
                   <input
                     type="text"
                     disabled={!isEditing}
@@ -567,15 +571,15 @@ export default function StudentProfilePage() {
                     placeholder="e.g. India"
                     className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${
                       isEditing
-                        ? "border-[#EAE6DF] bg-white focus:ring-2 focus:ring-[#E06A26] focus:outline-none"
-                        : "border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] cursor-default"
+                        ? "border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
+                        : "border-slate-800 bg-slate-900/40 text-slate-300 cursor-default"
                     }`}
                   />
                 </div>
               </div>
 
               {isEditing && (
-                <div className="flex justify-end gap-3 pt-4 border-t border-[#EAE6DF]">
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
                   <Button
                     type="button"
                     variant="outline"
@@ -583,17 +587,17 @@ export default function StudentProfilePage() {
                       setIsEditing(false);
                       fetchFullProfile();
                     }}
-                    className="text-xs py-2 px-4"
+                    className="text-xs py-2 px-4 border-slate-700 bg-slate-800/60 text-slate-300 hover:text-white hover:bg-slate-700"
                   >
-                    Cancel
+                    {t("cancel_edit")}
                   </Button>
                   <Button
                     type="submit"
                     variant="primary"
                     isLoading={isSaving}
-                    className="text-xs py-2 px-5 gap-1.5 shadow-sm"
+                    className="text-xs py-2 px-5 gap-1.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold shadow-lg shadow-indigo-500/20"
                   >
-                    <Save className="h-3.5 w-3.5" /> Save Profile Changes
+                    <Save className="h-3.5 w-3.5" /> {t("save_profile")}
                   </Button>
                 </div>
               )}
@@ -601,14 +605,14 @@ export default function StudentProfilePage() {
           </form>
 
           {/* Section 3: Security & Password Management */}
-          <Card className="p-6 space-y-4">
-            <div className="flex items-center gap-2 border-b border-[#EAE6DF] pb-3">
-              <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+          <Card className="p-6 space-y-4 bg-[#0D1322] border-slate-800 shadow-xl">
+            <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+              <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                 <Lock className="h-4 w-4" />
               </div>
               <div>
-                <h4 className="font-bold text-[#1C1C1F] text-sm">Security & Password Management</h4>
-                <p className="text-xs text-[#6B6B76]">Update your account authentication credentials</p>
+                <h4 className="font-bold text-white text-sm">{t("change_password_btn")}</h4>
+                <p className="text-xs text-slate-400">{t("reset_password_subtitle")}</p>
               </div>
             </div>
 
@@ -625,6 +629,7 @@ function PasswordChangeForm({
 }: {
   addToast: (type: "success" | "error" | "info", msg: string) => void;
 }) {
+  const { t } = useLanguage();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -665,13 +670,13 @@ function PasswordChangeForm({
   };
 
   return (
-    <form onSubmit={handleChangePassword} className="space-y-3.5 bg-[#FAF8F5]/75 p-4 rounded-xl border border-[#EAE6DF]">
+    <form onSubmit={handleChangePassword} className="space-y-3.5 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
       {formError && <Alert type="error">{formError}</Alert>}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
-          <label className="block text-[11px] font-bold text-[#1C1C1F] uppercase tracking-wider mb-1">
-            Current Password
+          <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+            {t("current_password")}
           </label>
           <input
             type="password"
@@ -679,13 +684,13 @@ function PasswordChangeForm({
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             placeholder="••••••••"
-            className="w-full px-3 py-2 text-xs border rounded-lg border-[#EAE6DF] focus:ring-2 focus:ring-[#E06A26] focus:outline-none bg-white"
+            className="w-full px-3 py-2 text-xs border rounded-lg border-slate-700 bg-slate-900 text-white placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
           />
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-[#1C1C1F] uppercase tracking-wider mb-1">
-            New Password
+          <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+            {t("new_password")}
           </label>
           <input
             type="password"
@@ -694,13 +699,13 @@ function PasswordChangeForm({
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder="Min. 6 chars"
-            className="w-full px-3 py-2 text-xs border rounded-lg border-[#EAE6DF] focus:ring-2 focus:ring-[#E06A26] focus:outline-none bg-white"
+            className="w-full px-3 py-2 text-xs border rounded-lg border-slate-700 bg-slate-900 text-white placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
           />
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-[#1C1C1F] uppercase tracking-wider mb-1">
-            Confirm Password
+          <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+            {t("confirm_password")}
           </label>
           <input
             type="password"
@@ -709,7 +714,7 @@ function PasswordChangeForm({
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Re-enter password"
-            className="w-full px-3 py-2 text-xs border rounded-lg border-[#EAE6DF] focus:ring-2 focus:ring-[#E06A26] focus:outline-none bg-white"
+            className="w-full px-3 py-2 text-xs border rounded-lg border-slate-700 bg-slate-900 text-white placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none"
           />
         </div>
       </div>
@@ -719,9 +724,9 @@ function PasswordChangeForm({
           type="submit"
           variant="primary"
           isLoading={isChanging}
-          className="text-xs py-2 px-4 shadow-sm"
+          className="text-xs py-2 px-4 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold shadow-lg shadow-indigo-500/20"
         >
-          Update Password
+          {t("change_password_btn")}
         </Button>
       </div>
     </form>

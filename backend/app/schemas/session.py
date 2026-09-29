@@ -120,6 +120,7 @@ class QuestionResultBreakdown(BaseModel):
     explanation: Optional[str] = None
     is_evaluated: Optional[bool] = False
     options_info: Optional[List[Dict[str, Any]]] = None
+    translations: Optional[Dict[str, str]] = None
 
 class ExamSubmissionResult(BaseModel):
     result_id: int
@@ -187,9 +188,11 @@ class GradeQuestionRequest(BaseModel):
 
 class FinalizeEvaluationRequest(BaseModel):
     evaluator_remarks: Optional[str] = None
+    status: Optional[str] = None
 
 class PublishResultRequest(BaseModel):
     evaluator_remarks: Optional[str] = None
+    status: Optional[str] = None
 
 class PendingEvaluationItem(BaseModel):
     session_id: int
@@ -235,6 +238,7 @@ class EvaluationSessionDetailResponse(BaseModel):
     evaluated_questions: int
     progress_percentage: float
     current_total_marks: float
+    status: Optional[str] = None
     questions: List[QuestionResultBreakdown]
 
 

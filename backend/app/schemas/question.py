@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from app.models.question import QuestionType, DifficultyLevel
 
@@ -19,6 +19,7 @@ class OptionResponse(BaseModel):
     option_text: str
     is_correct: bool
     option_order: int
+    translations: Optional[Dict[str, str]] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -26,6 +27,7 @@ class OptionStudentResponse(BaseModel):
     id: int
     option_text: str
     option_order: int
+    translations: Optional[Dict[str, str]] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -79,6 +81,7 @@ class QuestionResponse(BaseModel):
     created_by: Optional[int] = None
     created_at: datetime
     options: List[OptionResponse] = []
+    translations: Optional[Dict[str, str]] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -90,6 +93,7 @@ class QuestionStudentResponse(BaseModel):
     difficulty: DifficultyLevel
     marks: float
     options: List[OptionStudentResponse] = []
+    translations: Optional[Dict[str, str]] = None
 
     model_config = ConfigDict(from_attributes=True)
 

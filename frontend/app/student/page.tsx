@@ -96,7 +96,7 @@ export default function StudentDashboard() {
     setActionLoadingId(examId);
     try {
       await api.post(`/exams/${examId}/register`);
-      addToast("success", "Successfully registered for exam! Seat confirmed.");
+      addToast("success", t("exam_registered_toast"));
       setExams((prev) =>
         prev.map((e) => (e.id === examId ? { ...e, is_registered: true } : e))
       );
@@ -106,7 +106,7 @@ export default function StudentDashboard() {
     } catch (err: any) {
       const msg = getErrorMessage(err);
       if (err.response?.status === 409 || msg.toLowerCase().includes("already registered")) {
-        addToast("info", "You are already registered for this exam.");
+        addToast("info", t("already_registered_toast"));
         setExams((prev) =>
           prev.map((e) => (e.id === examId ? { ...e, is_registered: true } : e))
         );
@@ -123,7 +123,7 @@ export default function StudentDashboard() {
       navigator.clipboard.writeText(user.registration_number);
       setCopiedReg(true);
       setTimeout(() => setCopiedReg(false), 2000);
-      addToast("info", "Registration number copied to clipboard.");
+      addToast("info", t("reg_copied_toast"));
     }
   };
 
@@ -133,12 +133,12 @@ export default function StudentDashboard() {
     const end = new Date(endTime);
 
     if (now < start) {
-      return { label: "Upcoming", variant: "amber" as const, canStart: false, isClosed: false };
+      return { labelKey: "upcoming", variant: "amber" as const, canStart: false, isClosed: false };
     }
     if (now > end) {
-      return { label: "Closed", variant: "slate" as const, canStart: false, isClosed: true };
+      return { labelKey: "closed", variant: "slate" as const, canStart: false, isClosed: true };
     }
-    return { label: "Live Window", variant: "emerald" as const, canStart: true, isClosed: false };
+    return { labelKey: "live_window", variant: "emerald" as const, canStart: true, isClosed: false };
   };
 
   const formatDateTime = (dateStr: string) => {
@@ -166,7 +166,7 @@ export default function StudentDashboard() {
 
   const upcomingExams = exams.filter((e) => {
     const ws = getWindowStatus(e.start_time, e.end_time);
-    return ws.label === "Upcoming" && !e.has_active_reattempt;
+    return ws.labelKey === "upcoming" && !e.has_active_reattempt;
   });
 
   const registeredExams = exams.filter((e) => e.is_registered || e.has_active_reattempt);
@@ -198,29 +198,29 @@ export default function StudentDashboard() {
       />
 
       {/* Hero Welcome Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-[#171719] via-[#242428] to-[#1C1C1F] rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-[#2F2F36]">
-        <div className="absolute right-0 top-0 -mt-12 -mr-12 w-96 h-96 bg-[#E06A26]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#0D1322] via-[#131B2E] to-[#0D1322] rounded-3xl p-6 sm:p-8 text-white shadow-2xl border border-slate-800">
+        <div className="absolute right-0 top-0 -mt-12 -mr-12 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <div
                 onClick={handleCopyReg}
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-mono font-semibold text-[#FAF8F5] cursor-pointer hover:bg-white/15 transition-colors"
-                title="Click to copy registration number"
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-indigo-500/30 text-xs font-mono font-semibold text-indigo-300 cursor-pointer hover:bg-slate-800 transition-colors shadow-xs"
+                title={t("click_to_copy_reg")}
               >
-                <Hash className="h-3 w-3 text-[#E06A26]" />
+                <Hash className="h-3 w-3 text-indigo-400" />
                 <span>{user?.registration_number || "STU-2026-000005"}</span>
-                {copiedReg ? <Check className="h-3 w-3 text-[#2B7853]" /> : <Copy className="h-3 w-3 text-[#E06A26]" />}
+                {copiedReg ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-indigo-400" />}
               </div>
-              <Badge variant="emerald">Verified Student</Badge>
+              <Badge variant="emerald">{t("verified_student")}</Badge>
             </div>
 
-            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-              {t("welcome_back")}, <span className="text-[#E06A26]">{user?.name}</span>
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white">
+              {t("welcome_back")}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">{user?.name}</span>
             </h1>
-            <p className="text-[#FAF8F5]/80 text-xs sm:text-sm max-w-2xl leading-relaxed">
-              Access your scheduled assessments, take AI-proctored examinations, and view official transcripts and performance diagnosis.
+            <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
+              {t("student_hero_subtitle")}
             </p>
           </div>
 
@@ -229,18 +229,18 @@ export default function StudentDashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full bg-white/10 hover:bg-white/20 text-white border-white/20 shadow-none gap-1.5"
+                className="w-full bg-slate-900/80 hover:bg-slate-800 text-slate-200 border-slate-700 shadow-none gap-1.5"
               >
-                <UserIcon className="h-3.5 w-3.5 text-[#E06A26]" /> {t("profile")}
+                <UserIcon className="h-3.5 w-3.5 text-indigo-400" /> {t("profile")}
               </Button>
             </Link>
             <Link href="/student/results" className="flex-1 lg:flex-none">
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full bg-white/10 hover:bg-white/20 text-white border-white/20 shadow-none gap-1.5"
+                className="w-full bg-slate-900/80 hover:bg-slate-800 text-slate-200 border-slate-700 shadow-none gap-1.5"
               >
-                <Award className="h-3.5 w-3.5 text-[#E06A26]" /> {t("results")}
+                <Award className="h-3.5 w-3.5 text-indigo-400" /> {t("results")}
               </Button>
             </Link>
             <Button
@@ -250,7 +250,7 @@ export default function StudentDashboard() {
               isLoading={isLoading}
               className="gap-1.5"
             >
-              <RefreshCw className="h-3.5 w-3.5" /> Refresh
+              <RefreshCw className="h-3.5 w-3.5" /> {t("refresh")}
             </Button>
           </div>
         </div>
@@ -261,35 +261,35 @@ export default function StudentDashboard() {
         <StatCard
           title={t("available_exams")}
           value={availableExams.length}
-          subtitle="Open for testing"
+          subtitle={t("open_for_testing")}
           icon={BookOpen}
           variant="burgundy"
         />
         <StatCard
           title={t("upcoming_exams")}
           value={upcomingExams.length}
-          subtitle="Scheduled ahead"
+          subtitle={t("scheduled_ahead")}
           icon={Calendar}
           variant="amber"
         />
         <StatCard
           title={t("registered_badge")}
           value={registeredExams.length}
-          subtitle="Confirmed seats"
+          subtitle={t("confirmed_seats")}
           icon={CheckCircle2}
           variant="emerald"
         />
         <StatCard
           title={t("completed_exams")}
           value={analytics ? analytics.total_attempts : completedExams.length}
-          subtitle="Submitted sessions"
+          subtitle={t("submitted_sessions")}
           icon={Award}
           variant="plum"
         />
         <StatCard
           title={t("total_marks")}
           value={analytics ? `${analytics.average_score.toFixed(1)}%` : "N/A"}
-          subtitle="Overall performance"
+          subtitle={t("overall_performance")}
           icon={TrendingUp}
           variant="champagne"
         />
@@ -316,7 +316,7 @@ export default function StudentDashboard() {
               <SearchInput
                 value={searchQuery}
                 onChange={setSearchQuery}
-                placeholder="Search exams or subject..."
+                placeholder={t("search_exams_placeholder")}
               />
             </div>
 
@@ -324,11 +324,11 @@ export default function StudentDashboard() {
               <select
                 value={subjectFilter}
                 onChange={(e) => setSubjectFilter(e.target.value)}
-                className="px-3 py-2 text-xs bg-white border border-[#EAE6DF] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E06A26]/20 text-[#1C1C1F] font-medium"
+                className="px-3 py-2 text-xs bg-[#0D1322] border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-100 font-medium"
               >
-                <option value="">All Subjects</option>
+                <option value="" className="bg-[#0D1322]">{t("all_subjects")}</option>
                 {uniqueSubjects.map((s) => (
-                  <option key={s} value={s}>
+                  <option key={s} value={s} className="bg-[#0D1322]">
                     {s}
                   </option>
                 ))}
@@ -341,19 +341,19 @@ export default function StudentDashboard() {
       {/* Exams Grid */}
       {isLoading ? (
         <div className="flex justify-center items-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#E06A26]"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500"></div>
         </div>
       ) : displayedExams.length === 0 ? (
         <EmptyState
-          title="No examinations found"
+          title={t("no_exams_found")}
           description={
             searchQuery || subjectFilter
-              ? "No assessments match your current search and filter criteria. Try adjusting your query."
+              ? t("no_exams_match_filter")
               : activeTab === "registered"
-              ? "You have not registered for any upcoming examinations yet. Explore available examinations above to register."
+              ? t("no_registered_exams_desc")
               : activeTab === "completed"
-              ? "No completed examinations in your record. Once you submit assessments, your results and scores will appear here."
-              : "There are currently no examinations scheduled in the system."
+              ? t("no_completed_exams_desc")
+              : t("no_exams_scheduled")
           }
           icon={BookOpen}
           action={
@@ -366,7 +366,7 @@ export default function StudentDashboard() {
                   setSubjectFilter("");
                 }}
               >
-                Reset Search Filters
+                {t("reset_filters")}
               </Button>
             )
           }
@@ -381,86 +381,86 @@ export default function StudentDashboard() {
             return (
               <div
                 key={exam.id}
-                className="bg-white rounded-2xl border border-[#EAE6DF] shadow-card hover:shadow-card-hover hover:border-[#E06A26]/40 transition-all duration-200 flex flex-col justify-between overflow-hidden"
+                className="bg-[#0D1322]/90 rounded-2xl border border-slate-800/80 shadow-xl hover:border-indigo-500/40 transition-all duration-200 flex flex-col justify-between overflow-hidden"
               >
                 {/* Card Header & Content */}
                 <div className="p-5 space-y-3.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-[#FEF3EC] text-[#E06A26] border border-[#FAD9C5]">
+                    <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
                       {exam.subject}
                     </span>
 
                     <div className="flex items-center gap-1.5">
                       {exam.webcam_monitoring_enabled && (
                         <span
-                          className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FAF8F5] text-[#6B6B76] border border-[#EAE6DF]"
+                          className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30"
                           title="Webcam proctoring enabled"
                         >
-                          <Video className="h-3 w-3 text-[#E06A26]" />
-                          Proctored
+                          <Video className="h-3 w-3 text-cyan-400" />
+                          {t("proctored")}
                         </span>
                       )}
                       <Badge variant={windowStatus.variant}>
-                        {windowStatus.label}
+                        {t(windowStatus.labelKey)}
                       </Badge>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-base font-bold text-[#1C1C1F] hover:text-[#E06A26] transition-colors line-clamp-1">
+                    <h3 className="text-base font-bold text-white hover:text-indigo-400 transition-colors line-clamp-1">
                       {exam.name}
                     </h3>
-                    <p className="text-xs text-[#6B6B76] mt-0.5 font-mono">
-                      Exam ID: #{exam.id}
+                    <p className="text-xs text-slate-400 mt-0.5 font-mono">
+                      {t("exam_id")}: #{exam.id}
                     </p>
                   </div>
 
                   {/* Core Metrics */}
-                  <div className="grid grid-cols-3 gap-2 p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE6DF] text-center">
+                  <div className="grid grid-cols-3 gap-2 p-3 bg-slate-900/80 rounded-xl border border-slate-800 text-center">
                     <div>
-                      <span className="block text-[10px] text-[#6B6B76] font-semibold uppercase">{t("questions")}</span>
-                      <span className="text-sm font-extrabold text-[#1C1C1F] font-mono">
+                      <span className="block text-[10px] text-slate-400 font-semibold uppercase">{t("questions")}</span>
+                      <span className="text-sm font-extrabold text-white font-mono">
                         {exam.total_questions}
                       </span>
                     </div>
 
-                    <div className="border-x border-[#EAE6DF]">
-                      <span className="block text-[10px] text-[#6B6B76] font-semibold uppercase">{t("duration")}</span>
-                      <span className="text-sm font-extrabold text-[#1C1C1F] font-mono">
+                    <div className="border-x border-slate-800">
+                      <span className="block text-[10px] text-slate-400 font-semibold uppercase">{t("duration")}</span>
+                      <span className="text-sm font-extrabold text-white font-mono">
                         {exam.duration_minutes}m
                       </span>
                     </div>
 
                     <div>
-                      <span className="block text-[10px] text-[#6B6B76] font-semibold uppercase">{t("total_marks")}</span>
-                      <span className="text-sm font-extrabold text-[#E06A26] font-mono">
+                      <span className="block text-[10px] text-slate-400 font-semibold uppercase">{t("total_marks")}</span>
+                      <span className="text-sm font-extrabold text-indigo-400 font-mono">
                         {exam.maximum_marks}
                       </span>
                     </div>
                   </div>
 
                   {/* Schedule Details */}
-                  <div className="space-y-1 text-xs text-[#6B6B76] pt-1">
+                  <div className="space-y-1 text-xs text-slate-400 pt-1">
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-[#6B6B76]">Start Window:</span>
-                      <span className="font-medium text-[#1C1C1F]">{formatDateTime(exam.start_time)}</span>
+                      <span className="text-slate-400">{t("start_window")}</span>
+                      <span className="font-medium text-slate-200">{formatDateTime(exam.start_time)}</span>
                     </div>
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-[#6B6B76]">End Window:</span>
-                      <span className="font-medium text-[#1C1C1F]">{formatDateTime(exam.end_time)}</span>
+                      <span className="text-slate-400">{t("end_window")}</span>
+                      <span className="font-medium text-slate-200">{formatDateTime(exam.end_time)}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Card Footer Actions */}
-                <div className="px-5 py-3.5 bg-[#FAF8F5]/80 border-t border-[#EAE6DF] flex items-center justify-between gap-3">
+                <div className="px-5 py-3.5 bg-slate-950/60 border-t border-slate-800/80 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-1.5">
                     {isReg ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#2B7853] bg-[#EFF7F2] px-2 py-0.5 rounded-full border border-[#C4DFD3]">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
                         <CheckCircle2 className="h-3.5 w-3.5" /> {t("registered_badge")}
                       </span>
                     ) : (
-                      <span className="text-[11px] text-[#6B6B76] font-medium">Not Registered</span>
+                      <span className="text-[11px] text-slate-400 font-medium">{t("not_registered")}</span>
                     )}
                   </div>
 
@@ -471,7 +471,7 @@ export default function StudentDashboard() {
                         size="sm"
                         onClick={() => router.push(`/student/results?exam_id=${exam.id}`)}
                       >
-                        <Award className="h-3.5 w-3.5 mr-1 text-[#E06A26]" /> {t("view_result")}
+                        <Award className="h-3.5 w-3.5 mr-1 text-indigo-400" /> {t("view_result")}
                       </Button>
                     ) : !isReg && !windowStatus.isClosed ? (
                       <Button
@@ -497,7 +497,7 @@ export default function StudentDashboard() {
                         size="sm"
                         onClick={() => router.push(`/student/exams/${exam.id}`)}
                       >
-                        Details <ArrowRight className="h-3 w-3 ml-1" />
+                        {t("details")} <ArrowRight className="h-3 w-3 ml-1" />
                       </Button>
                     )}
                   </div>

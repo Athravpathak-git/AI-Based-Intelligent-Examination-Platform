@@ -1,7 +1,8 @@
 "use client";
 
-import ExaminerResultsPage from "@/app/examiner/results/page";
+import React from "react";
+import ExaminerResultsWorkspace from "@/components/ExaminerResultsWorkspace";
 
 export default function AdminResultsPage() {
-  return <ExaminerResultsPage />;
+  return <ExaminerResultsWorkspace />;
 }

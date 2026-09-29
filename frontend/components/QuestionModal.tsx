@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import { Question, Option, QuestionType, DifficultyLevel } from "@/types";
 import { api, getErrorMessage } from "@/lib/api";
 import { Button, Alert } from "./UIComponents";
-import { X, Plus, Trash2 } from "lucide-react";
+import { useLanguage } from "@/lib/i18n";
+import { X, Plus, Trash2, HelpCircle } from "lucide-react";
 
 interface QuestionModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface QuestionModalProps {
 }
 
 export default function QuestionModal({ isOpen, onClose, onSaved, initialData }: QuestionModalProps) {
+  const { t } = useLanguage();
   const [subject, setSubject] = useState("");
   const [questionText, setQuestionText] = useState("");
   const [questionType, setQuestionType] = useState<QuestionType>("MCQ");
@@ -149,21 +151,21 @@ export default function QuestionModal({ isOpen, onClose, onSaved, initialData }:
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#171719]/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#FFFFFF] rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col border border-[#EAE6DF]">
-        <div className="flex items-center justify-between p-6 border-b border-[#EAE6DF] bg-[#FFFFFF] rounded-t-2xl">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-[#0D1322] rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col border border-slate-800 text-slate-100 animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-[#0D1322] rounded-t-2xl">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FEF3EC] border border-[#EAE6DF] flex items-center justify-center text-[#C85332]">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-sm">
               <Plus className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#1C1C1F]">
-                {initialData ? "Edit Authoritative Question" : "Create Authoritative Question"}
+              <h2 className="text-base font-bold text-white">
+                {initialData ? t("edit_question_title") : t("create_question_title")}
               </h2>
-              <p className="text-xs text-[#6B6B76]">Define question prompt, answers, marking scheme, and taxonomy.</p>
+              <p className="text-xs text-slate-400">{t("exam_config_subtitle")}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#FAF8F5] text-[#6B6B76] hover:text-[#1C1C1F] transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -173,61 +175,61 @@ export default function QuestionModal({ isOpen, onClose, onSaved, initialData }:
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Subject</label>
+              <label className="block text-xs font-semibold text-slate-200 mb-1.5">{t("subject")} *</label>
               <input
                 type="text"
                 required
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="e.g. Mathematics, Physics"
-                className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:outline-none transition-all"
+                placeholder={t("subject_placeholder")}
+                className="w-full px-3.5 py-2 text-xs border rounded-xl border-slate-800 bg-[#080C14] text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all placeholder:text-slate-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Difficulty</label>
+              <label className="block text-xs font-semibold text-slate-200 mb-1.5">{t("difficulty_level")}</label>
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value as DifficultyLevel)}
-                className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:outline-none"
+                className="w-full px-3.5 py-2 text-xs border rounded-xl border-slate-800 bg-[#080C14] text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none"
               >
-                <option value="EASY">EASY</option>
-                <option value="MEDIUM">MEDIUM</option>
-                <option value="HARD">HARD</option>
+                <option value="EASY">{t("easy")}</option>
+                <option value="MEDIUM">{t("medium")}</option>
+                <option value="HARD">{t("hard")}</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Question Type</label>
+            <label className="block text-xs font-semibold text-slate-200 mb-1.5">{t("question_type")}</label>
             <select
               value={questionType}
               onChange={(e) => setQuestionType(e.target.value as QuestionType)}
-              className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:outline-none"
+              className="w-full px-3.5 py-2 text-xs border rounded-xl border-slate-800 bg-[#080C14] text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none"
             >
-              <option value="MCQ">MCQ (Single Choice)</option>
-              <option value="MULTI_SELECT">MULTI_SELECT (Multiple Choice)</option>
-              <option value="SHORT_ANSWER">SHORT_ANSWER (Text / Keywords)</option>
-              <option value="LONG_ANSWER">LONG_ANSWER (Descriptive Essay)</option>
-              <option value="IMAGE_UPLOAD">IMAGE_UPLOAD (Diagram / Handwritten)</option>
+              <option value="MCQ">{t("multiple_choice")} (Single Choice)</option>
+              <option value="MULTI_SELECT">{t("multi_select")} (Multiple Choice)</option>
+              <option value="SHORT_ANSWER">{t("short_answer")}</option>
+              <option value="LONG_ANSWER">{t("long_answer")}</option>
+              <option value="IMAGE_UPLOAD">{t("image_solution")}</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Question Prompt Text *</label>
+            <label className="block text-xs font-semibold text-slate-200 mb-1.5">{t("question_prompt_statement")} *</label>
             <textarea
               required
               rows={3}
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
-              placeholder="Enter the complete question prompt..."
-              className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:outline-none transition-all leading-relaxed"
+              placeholder={t("enter_question_prompt")}
+              className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-[#080C14] text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all leading-relaxed placeholder:text-slate-500"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Marks Awarded</label>
+              <label className="block text-xs font-semibold text-slate-200 mb-1.5">{t("marks")}</label>
               <input
                 type="number"
                 step="0.5"
@@ -235,12 +237,12 @@ export default function QuestionModal({ isOpen, onClose, onSaved, initialData }:
                 required
                 value={marks}
                 onChange={(e) => setMarks(parseFloat(e.target.value))}
-                className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:outline-none"
+                className="w-full px-3.5 py-2 text-xs border rounded-xl border-slate-800 bg-[#080C14] text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Negative Deduction Marks</label>
+              <label className="block text-xs font-semibold text-slate-200 mb-1.5">{t("negative_marking")}</label>
               <input
                 type="number"
                 step="0.25"
@@ -248,56 +250,51 @@ export default function QuestionModal({ isOpen, onClose, onSaved, initialData }:
                 required
                 value={negativeMarks}
                 onChange={(e) => setNegativeMarks(parseFloat(e.target.value))}
-                className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:outline-none"
+                className="w-full px-3.5 py-2 text-xs border rounded-xl border-slate-800 bg-[#080C14] text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none"
               />
             </div>
           </div>
 
           {/* Options for MCQ / MULTI_SELECT */}
           {["MCQ", "MULTI_SELECT"].includes(questionType) && (
-            <div className="border-t border-[#EAE6DF] pt-4 space-y-3">
+            <div className="border-t border-slate-800 pt-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#C85332] uppercase tracking-wider">
-                  Options & Correct Answer
-                </span>
+                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider">{t("options")}</label>
                 <button
                   type="button"
                   onClick={handleAddOption}
-                  className="text-xs font-semibold text-[#C85332] hover:text-[#171719] flex items-center gap-1 bg-[#FEF3EC] px-2.5 py-1 rounded-lg border border-[#EAE6DF] transition-colors"
+                  className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Add Option
+                  <Plus className="h-3.5 w-3.5" /> {t("add_option")}
                 </button>
               </div>
 
-              <p className="text-[11px] text-[#6B6B76]">
-                {questionType === "MCQ"
-                  ? "Select the single correct option using the radio button."
-                  : "Check all options that are correct (at least 2 required)."}
-              </p>
-
-              <div className="space-y-2.5">
-                {options.map((opt, index) => (
-                  <div key={index} className="flex items-center gap-2.5 p-2 bg-[#FAF8F5] rounded-xl border border-[#EAE6DF]">
-                    <input
-                      type={questionType === "MCQ" ? "radio" : "checkbox"}
-                      name="correct-option-group"
-                      checked={opt.is_correct}
-                      onChange={() => handleCorrectToggle(index)}
-                      className="h-4 w-4 text-[#C85332] focus:ring-[#C85332] rounded"
-                    />
+              <div className="space-y-2">
+                {options.map((opt, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCorrectToggle(idx)}
+                      className={`h-7 px-3 rounded-lg text-xs font-bold transition-all shrink-0 border ${
+                        opt.is_correct
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                          : "bg-[#080C14] text-slate-500 border-slate-800 hover:text-slate-300"
+                      }`}
+                    >
+                      {opt.is_correct ? "CORRECT" : "INCORRECT"}
+                    </button>
                     <input
                       type="text"
                       required
                       value={opt.option_text}
-                      onChange={(e) => handleOptionChange(index, e.target.value)}
-                      placeholder={`Option ${index + 1}`}
-                      className="flex-1 px-3 py-1.5 text-xs border rounded-lg border-[#EAE6DF] bg-[#FFFFFF] text-[#1C1C1F] focus:ring-2 focus:ring-[#C85332] focus:outline-none"
+                      onChange={(e) => handleOptionChange(idx, e.target.value)}
+                      placeholder={`Option ${String.fromCharCode(65 + idx)}`}
+                      className="flex-1 px-3 py-1.5 text-xs border rounded-xl border-slate-800 bg-[#080C14] text-white focus:bg-[#0D1322] focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
                     />
                     <button
                       type="button"
-                      onClick={() => handleRemoveOption(index)}
-                      className="p-1.5 text-[#6B6B76] hover:text-[#9B3D4A] rounded-lg transition-colors"
-                      title="Remove option"
+                      onClick={() => handleRemoveOption(idx)}
+                      className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg transition-colors"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -307,39 +304,43 @@ export default function QuestionModal({ isOpen, onClose, onSaved, initialData }:
             </div>
           )}
 
-          {/* Subjective / Expected answers */}
-          {!["MCQ", "MULTI_SELECT"].includes(questionType) && (
-            <div className="border-t border-[#EAE6DF] pt-4 space-y-3">
+          {/* Model Answer & Explanation for Subjective */}
+          {["SHORT_ANSWER", "LONG_ANSWER", "IMAGE_UPLOAD"].includes(questionType) && (
+            <div className="border-t border-slate-800 pt-4 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Expected Answer / Keywords</label>
-                <textarea
-                  rows={2}
+                <label className="block text-xs font-semibold text-slate-200 mb-1.5">
+                  {t("expected_answer_keywords")}
+                </label>
+                <input
+                  type="text"
                   value={expectedAnswer}
                   onChange={(e) => setExpectedAnswer(e.target.value)}
-                  placeholder="Key terms or concepts required for marks..."
-                  className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:outline-none transition-all"
+                  placeholder={t("keywords_comma_separated")}
+                  className="w-full px-3.5 py-2 text-xs border rounded-xl border-slate-800 bg-[#080C14] text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none placeholder:text-slate-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Model Answer</label>
+                <label className="block text-xs font-semibold text-slate-200 mb-1.5">
+                  {t("reference_model_answer_rubric")}
+                </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={modelAnswer}
                   onChange={(e) => setModelAnswer(e.target.value)}
-                  placeholder="Complete benchmark evaluation answer..."
-                  className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-[#FFFFFF] focus:ring-2 focus:ring-[#C85332] focus:outline-none transition-all"
+                  placeholder={t("model_solution_placeholder")}
+                  className="w-full px-3.5 py-2 text-xs border rounded-xl border-slate-800 bg-[#080C14] text-white focus:bg-[#0D1322] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none placeholder:text-slate-500"
                 />
               </div>
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#EAE6DF]">
-            <Button type="button" variant="outline" onClick={onClose} className="text-xs py-2 px-4">
-              Cancel
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+            <Button type="button" variant="outline" onClick={onClose} className="text-xs py-2 px-4 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/60">
+              {t("cancel")}
             </Button>
-            <Button type="submit" variant="primary" isLoading={isSubmitting} className="text-xs py-2 px-5 shadow-xs">
-              {initialData ? "Update Question" : "Save Question"}
+            <Button type="submit" variant="primary" isLoading={isSubmitting} className="text-xs py-2 px-5 shadow-md shadow-indigo-500/20">
+              {initialData ? t("save_changes") : t("create_question")}
             </Button>
           </div>
         </form>

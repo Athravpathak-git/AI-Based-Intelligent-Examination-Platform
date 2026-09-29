@@ -113,20 +113,20 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-8 sm:py-12 animate-fade-in-up">
-      <Card className="p-6 sm:p-10 space-y-6 border-[#EAE6DF] bg-white shadow-card rounded-3xl">
+    <div className="max-w-2xl mx-auto py-6 sm:py-10 animate-fade-in-up">
+      <Card className="p-6 sm:p-10 space-y-6 border-slate-800 bg-[#0D1322] shadow-2xl rounded-3xl">
         {/* Header */}
-        <div className="text-center space-y-2 pb-4 border-b border-[#EAE6DF]">
-          <div className="w-14 h-14 bg-[#FEF3EC] text-[#E06A26] rounded-2xl flex items-center justify-center mx-auto border border-[#FAD9C5]">
+        <div className="text-center space-y-2 pb-4 border-b border-slate-800">
+          <div className="w-14 h-14 bg-gradient-to-tr from-indigo-600 to-cyan-500 text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-indigo-500/25 border border-indigo-400/30">
             <GraduationCap className="h-8 w-8" />
           </div>
-          <h1 className="text-2xl font-extrabold text-[#1C1C1F] tracking-tight">{t("student_registration_title")}</h1>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">{t("student_registration_title")}</h1>
           <div className="flex justify-center">
             <Badge variant="emerald">
               <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Candidate Portal Exclusively
             </Badge>
           </div>
-          <p className="text-xs text-[#6B6B76] max-w-md mx-auto">
+          <p className="text-xs text-slate-400 max-w-md mx-auto">
             {t("student_registration_subtitle")}
           </p>
         </div>
@@ -135,24 +135,24 @@ export default function RegisterPage() {
 
         {successData ? (
           <div className="space-y-6 text-center py-6 animate-in fade-in zoom-in-95 duration-300">
-            <div className="mx-auto w-16 h-16 bg-[#EFF7F2] text-[#2B7853] rounded-full flex items-center justify-center border border-[#C4DFD3]">
+            <div className="mx-auto w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
               <CheckCircle2 className="h-9 w-9" />
             </div>
             <div className="space-y-1.5">
-              <h2 className="text-xl font-bold text-[#1C1C1F]">Registration Confirmed!</h2>
-              <p className="text-xs text-[#6B6B76]">
+              <h2 className="text-xl font-bold text-white">Registration Confirmed!</h2>
+              <p className="text-xs text-slate-300">
                 Welcome to IntelliExamAI, <strong>{successData.name}</strong>. Your profile has been recorded in the institutional database.
               </p>
             </div>
 
-            <div className="bg-[#FAF8F5] border border-[#EAE6DF] p-5 rounded-2xl text-left space-y-2">
-              <span className="text-[11px] font-bold text-[#E06A26] uppercase tracking-wider flex items-center gap-1.5">
-                <Hash className="h-3.5 w-3.5 text-[#E06A26]" /> Permanent Registration Number
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl text-left space-y-2">
+              <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Hash className="h-3.5 w-3.5 text-indigo-400" /> Permanent Registration Number
               </span>
-              <div className="text-2xl font-mono font-black text-[#E06A26] tracking-wide">
+              <div className="text-2xl font-mono font-black text-indigo-300 tracking-wide">
                 {successData.registration_number}
               </div>
-              <p className="text-xs text-[#6B6B76]">
+              <p className="text-xs text-slate-400">
                 Please save this registration number securely. It uniquely authenticates your examination seat, attempts, and official scorecards.
               </p>
             </div>
@@ -169,19 +169,19 @@ export default function RegisterPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Step Navigation Tabs */}
-            <div className="flex border-b border-[#EAE6DF] text-xs font-semibold">
+            <div className="flex border-b border-slate-800 text-xs font-semibold">
               <button
                 type="button"
                 onClick={() => setActiveTab("personal")}
                 className={
                   "flex-1 py-3 text-center border-b-2 transition-colors flex items-center justify-center gap-1.5 " +
                   (activeTab === "personal"
-                    ? "border-[#E06A26] text-[#E06A26] font-bold"
-                    : "border-transparent text-[#6B6B76] hover:text-[#1C1C1F]")
+                    ? "border-indigo-500 text-indigo-400 font-bold"
+                    : "border-transparent text-slate-400 hover:text-white")
                 }
               >
                 <UserIcon className="h-3.5 w-3.5" />
-                1. Personal & Account
+                {t("tab_personal")}
               </button>
               <button
                 type="button"
@@ -189,12 +189,12 @@ export default function RegisterPage() {
                 className={
                   "flex-1 py-3 text-center border-b-2 transition-colors flex items-center justify-center gap-1.5 " +
                   (activeTab === "academic"
-                    ? "border-[#E06A26] text-[#E06A26] font-bold"
-                    : "border-transparent text-[#6B6B76] hover:text-[#1C1C1F]")
+                    ? "border-indigo-500 text-indigo-400 font-bold"
+                    : "border-transparent text-slate-400 hover:text-white")
                 }
               >
                 <Building2 className="h-3.5 w-3.5" />
-                2. Academic Details
+                {t("tab_academic")}
               </button>
               <button
                 type="button"
@@ -202,12 +202,12 @@ export default function RegisterPage() {
                 className={
                   "flex-1 py-3 text-center border-b-2 transition-colors flex items-center justify-center gap-1.5 " +
                   (activeTab === "address"
-                    ? "border-[#E06A26] text-[#E06A26] font-bold"
-                    : "border-transparent text-[#6B6B76] hover:text-[#1C1C1F]")
+                    ? "border-indigo-500 text-indigo-400 font-bold"
+                    : "border-transparent text-slate-400 hover:text-white")
                 }
               >
                 <MapPin className="h-3.5 w-3.5" />
-                3. Address & Contact
+                {t("tab_address")}
               </button>
             </div>
 
@@ -216,11 +216,11 @@ export default function RegisterPage() {
               <div className="space-y-4 animate-in fade-in duration-200">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">
-                      Full Legal Name <span className="text-[#C85332]">*</span>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      {t("full_name")} <span className="text-rose-400">*</span>
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#E06A26]">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                         <UserIcon className="h-4 w-4" />
                       </div>
                       <input
@@ -229,17 +229,17 @@ export default function RegisterPage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="e.g. Alexander Walker"
-                        className="w-full pl-10 pr-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                        className="w-full pl-10 pr-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">
-                      Email Address <span className="text-[#C85332]">*</span>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      {t("email_address")} <span className="text-rose-400">*</span>
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#E06A26]">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                         <Mail className="h-4 w-4" />
                       </div>
                       <input
@@ -248,17 +248,17 @@ export default function RegisterPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="student@university.edu"
-                        className="w-full pl-10 pr-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                        className="w-full pl-10 pr-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">
-                      Password <span className="text-[#C85332]">*</span>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      {t("password")} <span className="text-rose-400">*</span>
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#E06A26]">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                         <Lock className="h-4 w-4" />
                       </div>
                       <input
@@ -268,17 +268,17 @@ export default function RegisterPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Min 6 characters"
-                        className="w-full pl-10 pr-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                        className="w-full pl-10 pr-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">
-                      Confirm Password <span className="text-[#C85332]">*</span>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      {t("confirm_password")} <span className="text-rose-400">*</span>
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#E06A26]">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                         <Lock className="h-4 w-4" />
                       </div>
                       <input
@@ -288,44 +288,44 @@ export default function RegisterPage() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="Re-enter password"
-                        className="w-full pl-10 pr-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                        className="w-full pl-10 pr-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Date of Birth</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("date_of_birth")}</label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#E06A26]">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                         <Calendar className="h-4 w-4" />
                       </div>
                       <input
                         type="date"
                         value={dateOfBirth}
                         onChange={(e) => setDateOfBirth(e.target.value)}
-                        className="w-full pl-10 pr-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                        className="w-full pl-10 pr-3.5 py-2 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Gender</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("gender")}</label>
                     <select
                       value={gender}
                       onChange={(e) => setGender(e.target.value)}
-                      className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                      className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                     >
-                      <option value="">Select Gender</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other / Prefer not to say</option>
+                      <option value="" className="bg-[#0D1322]">Select Gender</option>
+                      <option value="Male" className="bg-[#0D1322]">Male</option>
+                      <option value="Female" className="bg-[#0D1322]">Female</option>
+                      <option value="Other" className="bg-[#0D1322]">Other / Prefer not to say</option>
                     </select>
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Mobile / WhatsApp Number</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("mobile_number")}</label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#E06A26]">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                         <Phone className="h-4 w-4" />
                       </div>
                       <input
@@ -333,7 +333,7 @@ export default function RegisterPage() {
                         value={mobileNumber}
                         onChange={(e) => setMobileNumber(e.target.value)}
                         placeholder="+91 98765 43210"
-                        className="w-full pl-10 pr-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                        className="w-full pl-10 pr-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                     </div>
                   </div>
@@ -344,9 +344,9 @@ export default function RegisterPage() {
                     type="button"
                     variant="outline"
                     onClick={() => setActiveTab("academic")}
-                    className="text-xs py-2 px-4 gap-1.5 text-[#E06A26] border-[#EAE6DF] hover:bg-[#FEF3EC]"
+                    className="text-xs py-2 px-4 gap-1.5 border-slate-700 hover:text-indigo-400"
                   >
-                    Next: Academic Details
+                    {t("next_academic")}
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -358,9 +358,9 @@ export default function RegisterPage() {
               <div className="space-y-4 animate-in fade-in duration-200">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">College / Institution</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("college_institution")}</label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#E06A26]">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                         <Building2 className="h-4 w-4" />
                       </div>
                       <input
@@ -368,26 +368,26 @@ export default function RegisterPage() {
                         value={college}
                         onChange={(e) => setCollege(e.target.value)}
                         placeholder="e.g. National Institute of Technology"
-                        className="w-full pl-10 pr-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                        className="w-full pl-10 pr-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Affiliated University</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("university")}</label>
                     <input
                       type="text"
                       value={university}
                       onChange={(e) => setUniversity(e.target.value)}
                       placeholder="e.g. Central University of Technology"
-                      className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                      className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Course / Degree</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("course_degree")}</label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#E06A26]">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                         <BookOpen className="h-4 w-4" />
                       </div>
                       <input
@@ -395,46 +395,46 @@ export default function RegisterPage() {
                         value={course}
                         onChange={(e) => setCourse(e.target.value)}
                         placeholder="e.g. B.Tech / BCA / B.Sc"
-                        className="w-full pl-10 pr-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                        className="w-full pl-10 pr-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Branch / Specialization</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("specialization_dept")}</label>
                     <input
                       type="text"
                       value={specialization}
                       onChange={(e) => setSpecialization(e.target.value)}
                       placeholder="e.g. Computer Science & Engineering"
-                      className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                      className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Year / Current Semester</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("year_semester")}</label>
                     <input
                       type="text"
                       value={yearSemester}
                       onChange={(e) => setYearSemester(e.target.value)}
                       placeholder="e.g. 3rd Year / 6th Semester"
-                      className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                      className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Enrollment / Roll Number</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("enrollment_number")}</label>
                     <input
                       type="text"
                       value={enrollmentNumber}
                       onChange={(e) => setEnrollmentNumber(e.target.value)}
                       placeholder="e.g. ENR-2023-4589"
-                      className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                      className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Graduation Year</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("graduation_year")}</label>
                     <input
                       type="number"
                       value={graduationYear}
@@ -442,7 +442,7 @@ export default function RegisterPage() {
                       placeholder="e.g. 2026"
                       min={2000}
                       max={2040}
-                      className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                      className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -453,17 +453,18 @@ export default function RegisterPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setActiveTab("personal")}
+                    className="border-slate-700 text-slate-400 hover:text-white"
                   >
-                    Back: Personal
+                    {t("previous_step")}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => setActiveTab("address")}
-                    className="gap-1.5 text-[#E06A26] border-[#EAE6DF] hover:bg-[#FEF3EC]"
+                    className="gap-1.5 border-slate-700 hover:text-indigo-400"
                   >
-                    Next: Address & Contact
+                    {t("next_address")}
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -475,9 +476,9 @@ export default function RegisterPage() {
               <div className="space-y-4 animate-in fade-in duration-200">
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Residential Street Address</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("address_line")}</label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#E06A26]">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                         <MapPin className="h-4 w-4" />
                       </div>
                       <input
@@ -485,53 +486,53 @@ export default function RegisterPage() {
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
                         placeholder="House / Flat No., Street, Landmark"
-                        className="w-full pl-10 pr-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                        className="w-full pl-10 pr-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">City / District</label>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("city")}</label>
                       <input
                         type="text"
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         placeholder="e.g. Mumbai"
-                        className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">State / Province</label>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("state")}</label>
                       <input
                         type="text"
                         value={state}
                         onChange={(e) => setState(e.target.value)}
                         placeholder="e.g. Maharashtra"
-                        className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">Country</label>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("country")}</label>
                       <input
                         type="text"
                         value={country}
                         onChange={(e) => setCountry(e.target.value)}
                         placeholder="e.g. India"
-                        className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#1C1C1F] mb-1.5">PIN / Postal Code</label>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1.5">{t("pin_code")}</label>
                       <input
                         type="text"
                         value={pinCode}
                         onChange={(e) => setPinCode(e.target.value)}
                         placeholder="e.g. 400001"
-                        className="w-full px-3.5 py-2 text-xs border rounded-xl border-[#EAE6DF] bg-[#FAF8F5] text-[#1C1C1F] focus:bg-white focus:ring-2 focus:ring-[#E06A26]/20 focus:border-[#E06A26] focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 text-xs border rounded-xl border-slate-800 bg-slate-950/60 text-slate-100 placeholder-slate-500 focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                     </div>
                   </div>
@@ -543,19 +544,20 @@ export default function RegisterPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setActiveTab("academic")}
+                    className="border-slate-700 text-slate-400 hover:text-white"
                   >
-                    Back: Academic
+                    {t("previous_step")}
                   </Button>
                 </div>
               </div>
             )}
 
             {/* Submission Button */}
-            <div className="pt-3 border-t border-[#EAE6DF]">
+            <div className="pt-3 border-t border-slate-800">
               <Button
                 type="submit"
                 variant="primary"
-                className="w-full py-3 font-bold text-xs shadow-saffron/20"
+                className="w-full py-3 font-bold text-xs shadow-lg shadow-indigo-600/25"
                 isLoading={isLoading}
               >
                 {t("create_account")}
@@ -564,9 +566,9 @@ export default function RegisterPage() {
           </form>
         )}
 
-        <div className="text-center text-xs text-[#6B6B76] pt-2 border-t border-[#EAE6DF]">
-          {t("no_account") === "New student candidate?" ? "Already registered?" : "आधीच नोंदणी केली आहे?"}{" "}
-          <Link href="/login" className="text-[#E06A26] font-bold hover:underline">
+        <div className="text-center text-xs text-slate-400 pt-2 border-t border-slate-800">
+          {t("already_have_account")}{" "}
+          <Link href="/login" className="text-indigo-400 font-bold hover:text-indigo-300 hover:underline">
             {t("login")}
           </Link>
         </div>
