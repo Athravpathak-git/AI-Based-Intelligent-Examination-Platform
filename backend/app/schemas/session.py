@@ -54,6 +54,23 @@ class SessionHeartbeatResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class SessionPauseResponse(BaseModel):
+    session_id: int
+    status: str
+    remaining_seconds: int
+    paused_at: datetime
+    message: str = "Exam session paused due to camera disconnection."
+
+    model_config = ConfigDict(from_attributes=True)
+
+class SessionResumeResponse(BaseModel):
+    session_id: int
+    status: str
+    remaining_seconds: int
+    message: str = "Exam session resumed."
+
+    model_config = ConfigDict(from_attributes=True)
+
 class SavedAnswerItem(BaseModel):
     question_id: int
     selected_option_ids: Optional[List[int]] = None

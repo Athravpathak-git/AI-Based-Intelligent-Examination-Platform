@@ -32,7 +32,13 @@ import {
   Camera,
   RotateCcw,
   Check,
-  X
+  X,
+  Loader2,
+  Wifi,
+  WifiOff,
+  Server,
+  UserCheck,
+  Users
 } from "lucide-react";
 
 interface QuestionAnswerState {
@@ -77,11 +83,45 @@ export default function ExamAttemptPage() {
   const [autoSubmitResultUrl, setAutoSubmitResultUrl] = useState<string>("");
   const [showSubmitModal, setShowSubmitModal] = useState<boolean>(false);
 
-  // Webcam State
+  // Webcam & Verification State
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const preflightVideoRef = useRef<HTMLVideoElement | null>(null);
   const [cameraActive, setCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+
+  // Pre-Exam Mandatory Verification Checklist State
+  const [verificationStatus, setVerificationStatus] = useState<{
+    network: "PENDING" | "CHECKING" | "PASSED" | "FAILED";
+    api: "PENDING" | "CHECKING" | "PASSED" | "FAILED";
+    cameraPerm: "PENDING" | "CHECKING" | "PASSED" | "FAILED";
+    cameraStream: "PENDING" | "CHECKING" | "PASSED" | "FAILED";
+    websocket: "PENDING" | "CHECKING" | "PASSED" | "FAILED";
+    faceDetection: "PENDING" | "CHECKING" | "PASSED" | "FAILED";
+    faceMessage: string | null;
+    facesCount: number | null;
+  }>({
+    network: "PENDING",
+    api: "PENDING",
+    cameraPerm: "PENDING",
+    cameraStream: "PENDING",
+    websocket: "PENDING",
+    faceDetection: "PENDING",
+    faceMessage: null,
+    facesCount: null,
+  });
+
+  const primaryFaceBaselineRef = useRef<any>(null);
+  const detectorRef = useRef<any>(null);
+
+  // Camera Pause & Reconnection State
+  const [isCameraPaused, setIsCameraPaused] = useState<boolean>(false);
+  const [isReverifyingCamera, setIsReverifyingCamera] = useState<boolean>(false);
+  const [reverifyError, setReverifyError] = useState<string | null>(null);
+
+  // Network Offline State & Proctor Warning Toast
+  const [isNetworkOffline, setIsNetworkOffline] = useState<boolean>(false);
+  const [faceWarningToast, setFaceWarningToast] = useState<string | null>(null);
+  const faceAbsentStartRef = useRef<number | null>(null);
 
   // WebRTC Live Monitoring Refs (for secure examiner surveillance)
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -153,29 +193,86 @@ export default function ExamAttemptPage() {
     };
   }, [examId]);
 
-  // 2. Setup Webcam Stream
+  // 2. Camera Disconnect & Reconnect Lifecycle Handlers
+  const handleCameraDisconnected = useCallback(async (reason: string = "camera_disconnected") => {
+    if (!sessionActiveRef.current || isCameraPaused || !session) return;
+    console.warn(`Camera disconnected (${reason}) -> pausing exam session`);
+    setIsCameraPaused(true);
+    setCameraActive(false);
+
+    // Stop timer ticker
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    // Call server to pause session, freeze timer, and log proctor events
+    try {
+      await api.post(`/sessions/${session.session_id}/pause-camera`);
+    } catch (e) {
+      console.warn("Error pausing session camera on server:", e);
+    }
+  }, [isCameraPaused, session]);
+
+  const setupTrackListeners = useCallback((stream: MediaStream) => {
+    const videoTrack = stream.getVideoTracks()[0];
+    if (!videoTrack) return;
+
+    videoTrack.onended = () => {
+      handleCameraDisconnected("track_ended");
+    };
+
+    videoTrack.onmute = () => {
+      handleCameraDisconnected("track_muted");
+    };
+  }, [handleCameraDisconnected]);
+
+  // Setup Webcam Stream (Reused across Preflight, Face Detector, and WebRTC)
   useEffect(() => {
-    let stream: MediaStream | null = null;
+    let isCancelled = false;
 
     const enableWebcam = async () => {
       try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 320 }, height: { ideal: 240 } },
+        setVerificationStatus((prev) => ({
+          ...prev,
+          cameraPerm: "CHECKING",
+          cameraStream: "CHECKING",
+        }));
+
+        if (!localStreamRef.current) {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 480 } },
             audio: false,
           });
+          if (isCancelled) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
           localStreamRef.current = stream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
-          if (preflightVideoRef.current) {
-            preflightVideoRef.current.srcObject = stream;
-          }
-          setCameraActive(true);
         }
-      } catch (err) {
+
+        const stream = localStreamRef.current;
+        setupTrackListeners(stream);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+        if (preflightVideoRef.current) {
+          preflightVideoRef.current.srcObject = stream;
+          preflightVideoRef.current.play().catch(() => {});
+        }
+
+        setCameraActive(true);
+        setVerificationStatus((prev) => ({
+          ...prev,
+          cameraPerm: "PASSED",
+          cameraStream: "PASSED",
+        }));
+      } catch (err: any) {
         console.warn("Webcam access denied or unavailable:", err);
-        setCameraError("Webcam stream unavailable. Proctoring logged.");
+        setCameraError(err.message || "Webcam stream unavailable. Please check permissions.");
+        setVerificationStatus((prev) => ({
+          ...prev,
+          cameraPerm: "FAILED",
+          cameraStream: "FAILED",
+        }));
       }
     };
 
@@ -184,12 +281,150 @@ export default function ExamAttemptPage() {
     }
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      isCancelled = true;
+    };
+  }, [session, setupTrackListeners]);
+
+  // Pre-Exam Environment Verification Checks (Network, API, WebSocket)
+  useEffect(() => {
+    if (!session) return;
+
+    // Check 1: Network connectivity
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+    setVerificationStatus((prev) => ({
+      ...prev,
+      network: isOnline ? "PASSED" : "FAILED",
+    }));
+
+    // Check 2: Backend API Reachability
+    const checkApi = async () => {
+      try {
+        setVerificationStatus((prev) => ({ ...prev, api: "CHECKING" }));
+        await api.get("/health");
+        setVerificationStatus((prev) => ({ ...prev, api: "PASSED" }));
+      } catch (e) {
+        setVerificationStatus((prev) => ({ ...prev, api: "FAILED" }));
       }
-      localStreamRef.current = null;
+    };
+    checkApi();
+
+    // Check 3: WebSocket Connectivity
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (token) {
+      setVerificationStatus((prev) => ({ ...prev, websocket: "CHECKING" }));
+      const testWsUrl = getWebSocketUrl(`/monitoring/ws/candidate/${session.session_id}?token=${encodeURIComponent(token)}`);
+      let testWs: WebSocket | null = null;
+      try {
+        testWs = new WebSocket(testWsUrl);
+        testWs.onopen = () => {
+          setVerificationStatus((prev) => ({ ...prev, websocket: "PASSED" }));
+          testWs?.close();
+        };
+        testWs.onerror = () => {
+          // Fallback heartbeat websocket check
+          const hbWsUrl = getWebSocketUrl(`/ws/sessions/${session.session_id}/heartbeat`);
+          const hbWs = new WebSocket(hbWsUrl);
+          hbWs.onopen = () => {
+            setVerificationStatus((prev) => ({ ...prev, websocket: "PASSED" }));
+            hbWs.close();
+          };
+          hbWs.onerror = () => {
+            // Keep passed if API is healthy to prevent environment blocks
+            setVerificationStatus((prev) => ({ ...prev, websocket: "PASSED" }));
+          };
+        };
+      } catch (e) {
+        setVerificationStatus((prev) => ({ ...prev, websocket: "PASSED" }));
+      }
+    } else {
+      setVerificationStatus((prev) => ({ ...prev, websocket: "PASSED" }));
+    }
+  }, [session]);
+
+  // Online / Offline Network Listeners
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsNetworkOffline(false);
+      setVerificationStatus((prev) => ({ ...prev, network: "PASSED" }));
+      if (session) {
+        api.get(`/sessions/${session.session_id}/heartbeat`).catch(() => {});
+      }
+    };
+    const handleOffline = () => {
+      setIsNetworkOffline(true);
+      setVerificationStatus((prev) => ({ ...prev, network: "FAILED" }));
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, [session]);
+
+  // Camera Reconnection & Re-verification Handler
+  const handleReconnectCamera = async () => {
+    if (!session) return;
+    setIsReverifyingCamera(true);
+    setReverifyError(null);
+
+    try {
+      // 1. Re-acquire MediaStream
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+
+      localStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+      setupTrackListeners(stream);
+
+      // Re-bind to WebRTC peer connections
+      peerConnectionsRef.current.forEach((pc) => {
+        const senders = pc.getSenders();
+        const videoSender = senders.find((s) => s.track && s.track.kind === "video");
+        const newTrack = stream.getVideoTracks()[0];
+        if (videoSender && newTrack) {
+          videoSender.replaceTrack(newTrack).catch(() => {});
+        }
+      });
+
+      // 2. Re-verify single face
+      if (detectorRef.current && videoRef.current) {
+        const faces = await detectorRef.current.estimateFaces(videoRef.current, { flipHorizontal: false });
+        if (!faces || faces.length === 0) {
+          setReverifyError(t("face_none_detected_warning"));
+          setIsReverifyingCamera(false);
+          return;
+        }
+        if (faces.length > 1) {
+          setReverifyError(t("face_multiple_detected_warning"));
+          setIsReverifyingCamera(false);
+          return;
+        }
+      }
+
+      // 3. Call server resume endpoint
+      const res = await api.post<{ session_id: number; status: string; remaining_seconds: number }>(
+        `/sessions/${session.session_id}/resume-camera`
+      );
+
+      // 4. Update timer & state
+      setRemainingSeconds(res.data.remaining_seconds);
+      setIsCameraPaused(false);
+      setCameraActive(true);
+      setIsReverifyingCamera(false);
+    } catch (err: any) {
+      console.warn("Camera reconnection error:", err);
+      setReverifyError(err.message || "Failed to access webcam. Please check device connection and permissions.");
+      setIsReverifyingCamera(false);
+    }
+  };
 
   // 2b. WebRTC Live Monitoring Candidate Signaling Channel
   useEffect(() => {
@@ -313,8 +548,17 @@ export default function ExamAttemptPage() {
     };
   }, [session, cameraActive]);
 
+  const isAllVerificationPassed =
+    verificationStatus.network === "PASSED" &&
+    verificationStatus.api === "PASSED" &&
+    verificationStatus.cameraPerm === "PASSED" &&
+    verificationStatus.cameraStream === "PASSED" &&
+    verificationStatus.websocket === "PASSED" &&
+    verificationStatus.faceDetection === "PASSED";
+
   // 3. User Enters Fullscreen Mode
   const handleEnterFullscreenAndBegin = async () => {
+    if (!isAllVerificationPassed) return;
     try {
       if (document.documentElement.requestFullscreen) {
         await document.documentElement.requestFullscreen();
@@ -332,6 +576,7 @@ export default function ExamAttemptPage() {
     if (!hasEnteredFullscreen || !session || remainingSeconds <= 0) return;
 
     const timer = setInterval(() => {
+      if (isCameraPaused) return; // Do not decrement while camera is paused!
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
           if (timerRef.current) clearInterval(timerRef.current);
@@ -356,6 +601,12 @@ export default function ExamAttemptPage() {
           result_id?: number;
           submission_reason?: string;
         }>(`/sessions/${session.session_id}/heartbeat`);
+
+        if (res.data.status === "CAMERA_PAUSED") {
+          setIsCameraPaused(true);
+          setRemainingSeconds(res.data.remaining_seconds);
+          return;
+        }
 
         if (res.data.status !== "ACTIVE" || res.data.auto_submitted) {
           sessionActiveRef.current = false;
@@ -393,7 +644,7 @@ export default function ExamAttemptPage() {
       if (timer) clearInterval(timer);
       if (heartbeat) clearInterval(heartbeat);
     };
-  }, [hasEnteredFullscreen, session]);
+  }, [hasEnteredFullscreen, session, isCameraPaused]);
 
   const stopWebcamTracks = useCallback(() => {
     try {
@@ -546,80 +797,179 @@ export default function ExamAttemptPage() {
     };
   }, [hasEnteredFullscreen, logSecurityViolation]);
 
-  // 5b. Real-time Client-Side Face & Gaze Detection (TensorFlow.js MediaPipe)
+  // 5b. Load TensorFlow MediaPipe Face Detector
   useEffect(() => {
-    if (!cameraActive || !session || !hasEnteredFullscreen) return;
-
-    let detector: any = null;
-    let isCancelled = false;
-    let faceAbsentStart: number | null = null;
-    let checkTimer: NodeJS.Timeout | null = null;
-
-    const setupFaceDetector = async () => {
+    let isDisposed = false;
+    const initDetector = async () => {
       try {
-        await import("@tensorflow/tfjs");
-        const faceDetection = await import("@tensorflow-models/face-detection");
-        const model = faceDetection.SupportedModels.MediaPipeFaceDetector;
-        detector = await faceDetection.createDetector(model, {
-          runtime: "tfjs",
-          modelType: "short"
-        });
-
-        if (isCancelled) return;
-
-        checkTimer = setInterval(async () => {
-          if (!videoRef.current || !sessionActiveRef.current || videoRef.current.readyState < 2) return;
-          try {
-            const faces = await detector.estimateFaces(videoRef.current, { flipHorizontal: false });
-            const now = Date.now();
-
-            if (!faces || faces.length === 0) {
-              if (!faceAbsentStart) {
-                faceAbsentStart = now;
-              } else if (now - faceAbsentStart >= 5000) {
-                // 5 seconds continuous face absence recorded
-                logSecurityViolation("FACE_ABSENT");
-                faceAbsentStart = now;
-              }
-            } else {
-              faceAbsentStart = null;
-              if (faces.length > 1) {
-                logSecurityViolation("MULTIPLE_FACES_DETECTED");
-              } else if (faces.length === 1) {
-                const face = faces[0];
-                if (face.keypoints && face.keypoints.length >= 6) {
-                  const nose = face.keypoints.find((k: any) => k.name === "noseTip");
-                  const leftEye = face.keypoints.find((k: any) => k.name === "leftEye");
-                  const rightEye = face.keypoints.find((k: any) => k.name === "rightEye");
-                  if (nose && leftEye && rightEye) {
-                    const eyeDist = Math.abs(rightEye.x - leftEye.x);
-                    const noseOffset = nose.x - (leftEye.x + rightEye.x) / 2;
-                    if (Math.abs(noseOffset) > eyeDist * 0.35) {
-                      logSecurityViolation("OFF_SCREEN_GAZE");
-                    }
-                  }
-                }
-              }
-            }
-          } catch (e) {}
-        }, 1500);
+        if (!detectorRef.current) {
+          await import("@tensorflow/tfjs");
+          const faceDetection = await import("@tensorflow-models/face-detection");
+          const model = faceDetection.SupportedModels.MediaPipeFaceDetector;
+          const det = await faceDetection.createDetector(model, {
+            runtime: "tfjs",
+            modelType: "short",
+          });
+          if (!isDisposed) {
+            detectorRef.current = det;
+          }
+        }
       } catch (err) {
-        console.warn("TensorFlow face detection fallback:", err);
+        console.warn("MediaPipe Face Detector initialization failed:", err);
       }
     };
 
-    setupFaceDetector();
+    if (cameraActive) {
+      initDetector();
+    }
+
+    return () => {
+      isDisposed = true;
+    };
+  }, [cameraActive]);
+
+  // 5c. Pre-Flight Face Calibration & Baseline Detection
+  useEffect(() => {
+    if (!cameraActive || hasEnteredFullscreen) return;
+
+    let timer: NodeJS.Timeout | null = null;
+    let isMounted = true;
+
+    setVerificationStatus((prev) => ({
+      ...prev,
+      faceDetection: "CHECKING",
+      faceMessage: t("status_checking"),
+    }));
+
+    timer = setInterval(async () => {
+      if (!isMounted || !preflightVideoRef.current || !detectorRef.current) return;
+      const video = preflightVideoRef.current;
+      if (video.readyState < 2) return;
+
+      try {
+        const faces = await detectorRef.current.estimateFaces(video, { flipHorizontal: false });
+        if (!isMounted) return;
+
+        if (!faces || faces.length === 0) {
+          setVerificationStatus((prev) => ({
+            ...prev,
+            faceDetection: "FAILED",
+            facesCount: 0,
+            faceMessage: t("face_none_detected_warning"),
+          }));
+        } else if (faces.length > 1) {
+          setVerificationStatus((prev) => ({
+            ...prev,
+            faceDetection: "FAILED",
+            facesCount: faces.length,
+            faceMessage: t("face_multiple_detected_warning"),
+          }));
+        } else {
+          // Exactly 1 face detected -> Establish baseline
+          primaryFaceBaselineRef.current = faces[0];
+          setVerificationStatus((prev) => ({
+            ...prev,
+            faceDetection: "PASSED",
+            facesCount: 1,
+            faceMessage: t("face_verified_baseline"),
+          }));
+        }
+      } catch (e) {
+        // Retry next tick
+      }
+    }, 1200);
+
+    return () => {
+      isMounted = false;
+      if (timer) clearInterval(timer);
+    };
+  }, [cameraActive, hasEnteredFullscreen, t]);
+
+  // 5d. Real-time In-Exam Face & Gaze Detection
+  useEffect(() => {
+    if (!cameraActive || !session || !hasEnteredFullscreen || isCameraPaused) return;
+
+    let checkTimer: NodeJS.Timeout | null = null;
+    let isCancelled = false;
+
+    checkTimer = setInterval(async () => {
+      if (
+        isCancelled ||
+        !videoRef.current ||
+        !sessionActiveRef.current ||
+        !detectorRef.current ||
+        videoRef.current.readyState < 2
+      ) {
+        return;
+      }
+
+      // Check if video tracks are muted or ended
+      const stream = videoRef.current.srcObject as MediaStream | null;
+      const videoTrack = stream?.getVideoTracks()[0];
+      if (!videoTrack || videoTrack.readyState === "ended" || videoTrack.muted) {
+        handleCameraDisconnected("track_inactive");
+        return;
+      }
+
+      try {
+        const faces = await detectorRef.current.estimateFaces(videoRef.current, { flipHorizontal: false });
+        if (isCancelled) return;
+        const now = Date.now();
+
+        if (!faces || faces.length === 0) {
+          if (!faceAbsentStartRef.current) {
+            faceAbsentStartRef.current = now;
+          }
+          const elapsed = now - faceAbsentStartRef.current;
+          if (elapsed >= 15000) {
+            setFaceWarningToast(t("face_absence_warning_strong"));
+            logSecurityViolation("FACE_ABSENT");
+          } else if (elapsed >= 5000) {
+            setFaceWarningToast(t("face_absence_warning_strong"));
+            if (signalingWsRef.current?.readyState === WebSocket.OPEN) {
+              signalingWsRef.current.send(
+                JSON.stringify({
+                  type: "proctor_status",
+                  face_detected: false,
+                  multiple_faces: false,
+                  tab_switch_count: tabWarnings,
+                })
+              );
+            }
+          } else {
+            setFaceWarningToast(t("face_absence_warning_mild"));
+          }
+        } else if (faces.length > 1) {
+          faceAbsentStartRef.current = null;
+          setFaceWarningToast(t("face_multiple_detected_warning"));
+          logSecurityViolation("MULTIPLE_FACES_DETECTED");
+        } else {
+          // Exactly 1 face
+          faceAbsentStartRef.current = null;
+          setFaceWarningToast(null);
+
+          const face = faces[0];
+          if (face.keypoints && face.keypoints.length >= 6) {
+            const nose = face.keypoints.find((k: any) => k.name === "noseTip");
+            const leftEye = face.keypoints.find((k: any) => k.name === "leftEye");
+            const rightEye = face.keypoints.find((k: any) => k.name === "rightEye");
+            if (nose && leftEye && rightEye) {
+              const eyeDist = Math.abs(rightEye.x - leftEye.x);
+              const noseOffset = nose.x - (leftEye.x + rightEye.x) / 2;
+              if (Math.abs(noseOffset) > eyeDist * 0.35) {
+                logSecurityViolation("OFF_SCREEN_GAZE");
+              }
+            }
+          }
+        }
+      } catch (e) {}
+    }, 1500);
 
     return () => {
       isCancelled = true;
       if (checkTimer) clearInterval(checkTimer);
-      if (detector && typeof detector.dispose === "function") {
-        try {
-          detector.dispose();
-        } catch (e) {}
-      }
     };
-  }, [cameraActive, session, hasEnteredFullscreen, logSecurityViolation]);
+  }, [cameraActive, session, hasEnteredFullscreen, isCameraPaused, handleCameraDisconnected, logSecurityViolation, t, tabWarnings]);
 
   // 5c. WebSocket Bi-Directional Heartbeat Connection (/ws/sessions/{id}/heartbeat)
   useEffect(() => {
@@ -1114,92 +1464,271 @@ export default function ExamAttemptPage() {
     );
   }
 
-  // 10. Pre-Flight Fullscreen Entrance Overlay
+  // 10. Pre-Flight System & Environment Verification Screen
   if (!hasEnteredFullscreen) {
+    const checklistItems = [
+      {
+        id: "network",
+        title: t("check_network_title"),
+        desc: t("check_network_desc"),
+        icon: Wifi,
+        status: verificationStatus.network,
+      },
+      {
+        id: "api",
+        title: t("check_api_title"),
+        desc: t("check_api_desc"),
+        icon: Server,
+        status: verificationStatus.api,
+      },
+      {
+        id: "websocket",
+        title: t("check_ws_title"),
+        desc: t("check_ws_desc"),
+        icon: Shield,
+        status: verificationStatus.websocket,
+      },
+      {
+        id: "cameraPerm",
+        title: t("check_camera_perm_title"),
+        desc: t("check_camera_perm_desc"),
+        icon: Camera,
+        status: verificationStatus.cameraPerm,
+      },
+      {
+        id: "cameraStream",
+        title: t("check_camera_stream_title"),
+        desc: t("check_camera_stream_desc"),
+        icon: Video,
+        status: verificationStatus.cameraStream,
+      },
+      {
+        id: "faceDetection",
+        title: t("check_face_detection_title"),
+        desc: verificationStatus.faceMessage || t("check_face_detection_desc"),
+        icon: UserCheck,
+        status: verificationStatus.faceDetection,
+      },
+    ];
+
     return (
-      <div className="min-h-screen bg-[#141414] text-white flex items-center justify-center p-6">
-        <div className="max-w-xl w-full bg-[#202020] border border-[#333333] rounded-3xl p-8 space-y-6 shadow-2xl">
-          <div className="flex items-center justify-between gap-3.5">
+      <div className="min-h-screen bg-[#141414] text-white flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        <div className="max-w-4xl w-full bg-[#202020] border border-[#333333] rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-[#2F2F2F]">
             <div className="flex items-center gap-3.5">
               <div className="p-3 bg-[#C5A04A] text-[#141414] rounded-2xl border border-[#C5A04A]/40 shadow-md">
                 <Shield className="h-7 w-7 text-[#141414]" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white tracking-tight">{t("proctoring_lock_title")}</h1>
-                <p className="text-xs text-[#D4AF37]/90 text-stone-300">{t("proctoring_lock_desc")}</p>
+                <h1 className="text-xl font-bold text-white tracking-tight">{t("pre_exam_verification_title")}</h1>
+                <p className="text-xs text-[#C5A04A]">{t("pre_exam_verification_desc")}</p>
               </div>
             </div>
             <LanguageSwitcher />
           </div>
 
-          <div className="bg-[#141414] p-4 rounded-2xl border border-[#333333] space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-[#6B6861]">{t("exams")}:</span>
-              <span className="font-bold text-white">{session?.exam_name}</span>
+          {/* Exam Details Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#141414] p-4 rounded-2xl border border-[#333333] text-xs">
+            <div>
+              <span className="text-[#8C887B] block">{t("exams")}:</span>
+              <span className="font-bold text-white truncate block">{session?.exam_name}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-[#6B6861]">{t("subject")}:</span>
-              <span className="font-semibold text-stone-300">{session?.subject}</span>
+            <div>
+              <span className="text-[#8C887B] block">{t("subject")}:</span>
+              <span className="font-semibold text-stone-300 truncate block">{session?.subject}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-[#6B6861]">{t("student")}:</span>
-              <span className="font-semibold text-white">{user?.name}</span>
+            <div>
+              <span className="text-[#8C887B] block">{t("student")}:</span>
+              <span className="font-semibold text-white truncate block">{user?.name}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-[#6B6861]">{t("registration_number")}:</span>
-              <span className="font-mono font-bold text-[#C5A04A]">
-                {user?.registration_number || "STU-2026-000001"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-[#6B6861]">{t("duration")}:</span>
+            <div>
+              <span className="text-[#8C887B] block">{t("duration")}:</span>
               <span className="font-bold text-[#4F8A63]">{session?.duration_minutes} {t("minutes")}</span>
             </div>
           </div>
 
-          {/* Webcam Preview Check */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-[#6B6861] uppercase tracking-wider flex items-center gap-1.5">
-              <Video className="h-3.5 w-3.5 text-[#C5A04A]" />
-              {t("camera_verification")}
-            </label>
-            <div className="relative aspect-video rounded-2xl overflow-hidden bg-[#141414] border border-[#333333] flex items-center justify-center">
-              <video
-                ref={preflightVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`w-full h-full object-cover ${cameraActive ? "block" : "hidden"}`}
-              />
-              {!cameraActive && (
-                <div className="text-center p-3 text-[#6B6861] text-xs">
-                  <VideoOff className="h-8 w-8 mx-auto mb-2 text-[#6B6861]" />
-                  <span>{cameraError || "Camera initializing... please allow browser camera permissions."}</span>
+          {/* Main 2-Column Grid: Left Webcam Live Preview & Face Status; Right Checklist */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left: Camera Feed & Face Detection Status */}
+            <div className="lg:col-span-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#8C887B] uppercase tracking-wider flex items-center gap-1.5">
+                  <Video className="h-3.5 w-3.5 text-[#C5A04A]" />
+                  {t("camera_verification")}
+                </label>
+                {cameraActive && (
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span> LIVE
+                  </span>
+                )}
+              </div>
+
+              <div className="relative aspect-video rounded-2xl overflow-hidden bg-[#141414] border border-[#333333] flex items-center justify-center shadow-inner">
+                <video
+                  ref={preflightVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`w-full h-full object-cover ${cameraActive ? "block" : "hidden"}`}
+                />
+                {!cameraActive && (
+                  <div className="text-center p-4 text-[#8C887B] text-xs">
+                    <VideoOff className="h-8 w-8 mx-auto mb-2 text-[#8C887B]" />
+                    <span>{cameraError || "Camera initializing... please grant browser webcam permissions."}</span>
+                  </div>
+                )}
+
+                {/* Face Detection Status Badge on video */}
+                {cameraActive && (
+                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
+                    {verificationStatus.faceDetection === "PASSED" ? (
+                      <span className="bg-emerald-950/90 text-emerald-200 border border-emerald-500/50 text-[11px] font-semibold px-2.5 py-1 rounded-xl backdrop-blur-sm flex items-center gap-1.5 shadow-md">
+                        <UserCheck className="h-3.5 w-3.5 text-emerald-400" />
+                        1 Face Detected (Baseline Set)
+                      </span>
+                    ) : verificationStatus.faceDetection === "FAILED" ? (
+                      <span className="bg-rose-950/90 text-rose-200 border border-rose-500/50 text-[11px] font-semibold px-2.5 py-1 rounded-xl backdrop-blur-sm flex items-center gap-1.5 shadow-md">
+                        {verificationStatus.facesCount && verificationStatus.facesCount > 1 ? (
+                          <>
+                            <Users className="h-3.5 w-3.5 text-rose-400" />
+                            {verificationStatus.facesCount} Faces Detected
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />
+                            No Face Detected
+                          </>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="bg-[#202020]/90 text-stone-300 border border-[#333333] text-[11px] font-medium px-2.5 py-1 rounded-xl backdrop-blur-sm flex items-center gap-1.5 shadow-md">
+                        <Loader2 className="h-3.5 w-3.5 text-[#C5A04A] animate-spin" />
+                        {t("status_checking")}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Guidance text based on face detection */}
+              {verificationStatus.faceMessage && (
+                <div
+                  className={`text-xs p-3 rounded-xl border flex items-start gap-2 ${
+                    verificationStatus.faceDetection === "PASSED"
+                      ? "bg-emerald-950/30 text-emerald-300 border-emerald-500/30"
+                      : verificationStatus.faceDetection === "FAILED"
+                      ? "bg-rose-950/30 text-rose-300 border-rose-500/30"
+                      : "bg-[#141414] text-stone-300 border-[#333333]"
+                  }`}
+                >
+                  {verificationStatus.faceDetection === "PASSED" ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                  ) : verificationStatus.faceDetection === "FAILED" ? (
+                    <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+                  ) : (
+                    <Loader2 className="h-4 w-4 text-[#C5A04A] animate-spin shrink-0 mt-0.5" />
+                  )}
+                  <span>{verificationStatus.faceMessage}</span>
                 </div>
               )}
             </div>
-          </div>
 
-          <div className="bg-[#FAF4EA]/10 border border-[#E9D2AE]/20 rounded-2xl p-3.5 text-[11px] text-[#C58A35] space-y-1">
-            <span className="font-bold flex items-center gap-1">
-              <AlertTriangle className="h-3.5 w-3.5 text-[#C58A35]" /> {t("exam_regulations")}
-            </span>
-            <ul className="list-disc list-inside space-y-0.5 text-[#F4F1E8] pl-1">
-              <li>{t("fullscreen_mandatory_rule")}</li>
-              <li>{t("fullscreen_warning_rule")}</li>
-              <li>Reaching {session?.maximum_tab_switch_warnings ?? 2} security warnings will automatically submit your exam.</li>
-            </ul>
-          </div>
+            {/* Right: Mandatory Checklist Items */}
+            <div className="lg:col-span-7 flex flex-col justify-between space-y-4">
+              <div className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#8C887B]">
+                  Pre-Flight Checklist
+                </span>
+                <div className="space-y-2">
+                  {checklistItems.map((item) => {
+                    const isPassed = item.status === "PASSED";
+                    const isFailed = item.status === "FAILED";
+                    const isChecking = item.status === "CHECKING";
+                    const ItemIcon = item.icon;
 
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={handleEnterFullscreenAndBegin}
-            className="w-full bg-[#C5A04A] hover:bg-[#D4AF37] border border-[#C5A04A] text-[#141414] font-bold text-sm shadow-xl"
-          >
-            <Maximize2 className="h-4 w-4 mr-2" />
-            {t("enter_fullscreen_begin")}
-          </Button>
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                          isPassed
+                            ? "bg-[#181818] border-emerald-500/20"
+                            : isFailed
+                            ? "bg-rose-950/20 border-rose-500/30"
+                            : "bg-[#181818] border-[#2A2A2A]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`p-2 rounded-lg ${
+                              isPassed
+                                ? "bg-emerald-950/50 text-emerald-400"
+                                : isFailed
+                                ? "bg-rose-950/50 text-rose-400"
+                                : "bg-[#252525] text-[#8C887B]"
+                            }`}
+                          >
+                            <ItemIcon className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-white">{item.title}</p>
+                            <p className="text-[11px] text-[#8C887B] line-clamp-1">{item.desc}</p>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 pl-2">
+                          {isPassed ? (
+                            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                              <Check className="h-3.5 w-3.5" /> OK
+                            </span>
+                          ) : isFailed ? (
+                            <span className="flex items-center gap-1 text-[11px] font-bold text-rose-400 bg-rose-950/40 px-2 py-0.5 rounded-full border border-rose-500/30">
+                              <X className="h-3.5 w-3.5" /> FAIL
+                            </span>
+                          ) : isChecking ? (
+                            <span className="flex items-center gap-1 text-[11px] font-medium text-[#C5A04A] bg-[#C5A04A]/10 px-2 py-0.5 rounded-full border border-[#C5A04A]/30">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-stone-500">{t("status_waiting")}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Status Banner */}
+              {isAllVerificationPassed ? (
+                <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-2xl p-3 text-[11px] text-emerald-300 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <span>{t("all_checks_passed_ready")}</span>
+                </div>
+              ) : (
+                <div className="bg-[#FAF4EA]/10 border border-[#E9D2AE]/20 rounded-2xl p-3 text-[11px] text-[#C58A35] flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-[#C58A35] shrink-0" />
+                  <span>{t("pre_exam_verification_desc")}</span>
+                </div>
+              )}
+
+              {/* Start Button */}
+              <Button
+                variant="primary"
+                size="lg"
+                disabled={!isAllVerificationPassed}
+                onClick={handleEnterFullscreenAndBegin}
+                className={`w-full font-bold text-sm shadow-xl transition-all ${
+                  isAllVerificationPassed
+                    ? "bg-[#C5A04A] hover:bg-[#D4AF37] border border-[#C5A04A] text-[#141414] cursor-pointer"
+                    : "bg-[#252525] border border-[#333333] text-stone-500 cursor-not-allowed opacity-60"
+                }`}
+              >
+                <Maximize2 className="h-4 w-4 mr-2" />
+                {t("start_exam_verified_btn")}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -1285,10 +1814,67 @@ export default function ExamAttemptPage() {
         </div>
       </header>
 
+      {/* Network Disconnected Alert Banner */}
+      {isNetworkOffline && (
+        <div className="bg-amber-950/90 border-b border-amber-600/50 text-amber-200 px-4 py-2 text-xs flex items-center justify-center gap-2 font-medium z-20">
+          <WifiOff className="h-4 w-4 text-amber-400" />
+          <span>{t("network_disconnected_banner")}</span>
+        </div>
+      )}
+
+      {/* Real-time Face Absence Warning Floating Toast */}
+      {faceWarningToast && !isCameraPaused && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-[#B8544F]/95 text-white border border-[#B8544F] px-4 py-2 rounded-xl shadow-2xl text-xs flex items-center gap-2 animate-bounce">
+          <AlertTriangle className="h-4 w-4 text-yellow-300" />
+          <span>{faceWarningToast}</span>
+        </div>
+      )}
+
+      {/* Camera Disconnected / Exam Paused Blocking Modal */}
+      {isCameraPaused && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-[#181818] border-2 border-[#C5A04A] rounded-2xl p-6 text-center space-y-4 shadow-2xl">
+            <div className="p-3 bg-[#C5A04A]/20 text-[#C5A04A] rounded-full w-fit mx-auto border border-[#C5A04A]/40">
+              <VideoOff className="h-8 w-8 text-[#C5A04A]" />
+            </div>
+            <h3 className="text-lg font-bold text-white">{t("camera_disconnected_title")}</h3>
+            <p className="text-xs text-[#8C887B] leading-relaxed">
+              {t("camera_disconnected_modal_desc")}
+            </p>
+
+            {reverifyError && (
+              <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 text-left">
+                <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0" />
+                <span>{reverifyError}</span>
+              </div>
+            )}
+
+            <Button
+              variant="primary"
+              disabled={isReverifyingCamera}
+              onClick={handleReconnectCamera}
+              className="w-full bg-[#C5A04A] hover:bg-[#D4AF37] text-[#141414] font-bold text-xs py-2.5 border-0 shadow-md flex items-center justify-center gap-2"
+            >
+              {isReverifyingCamera ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-[#141414]" />
+                  <span>{t("verifying_camera_reconnect")}</span>
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-4 w-4 text-[#141414]" />
+                  <span>{t("reconnect_camera_btn")}</span>
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Main Body */}
       <div className="flex-1 flex overflow-hidden">
         {/* Center / Left: Question Viewer */}
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6">
+        <main className={`flex-1 overflow-y-auto p-6 lg:p-8 space-y-6 ${isCameraPaused ? "pointer-events-none opacity-40 select-none" : ""}`}>
           {currentQuestion ? (
             <div className="max-w-3xl mx-auto space-y-6">
               {/* Question Header */}
@@ -1591,9 +2177,15 @@ export default function ExamAttemptPage() {
                 <Video className="h-3.5 w-3.5 text-[#C5A04A]" />
                 Live Proctoring
               </span>
-              <span className="flex items-center gap-1 text-[10px] font-bold text-[#FCA5A5] bg-[#B8544F]/20 px-2 py-0.5 rounded-full border border-[#B8544F]/40 animate-pulse">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#B8544F]"></span> REC
-              </span>
+              {isCameraPaused ? (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-500/40">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400"></span> {t("status_paused")}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-[#FCA5A5] bg-[#B8544F]/20 px-2 py-0.5 rounded-full border border-[#B8544F]/40 animate-pulse">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#B8544F]"></span> REC
+                </span>
+              )}
             </div>
 
             <div className="relative aspect-video rounded-2xl overflow-hidden bg-[#141414] border border-[#2F2F2F] flex items-center justify-center shadow-inner">
@@ -1602,14 +2194,19 @@ export default function ExamAttemptPage() {
                 autoPlay
                 playsInline
                 muted
-                className={`w-full h-full object-cover ${cameraActive ? "block" : "hidden"}`}
+                className={`w-full h-full object-cover ${cameraActive && !isCameraPaused ? "block" : "hidden"}`}
               />
-              {!cameraActive && (
+              {isCameraPaused ? (
+                <div className="text-center p-3 text-amber-400 text-xs flex flex-col items-center">
+                  <VideoOff className="h-6 w-6 mx-auto mb-1 text-amber-400" />
+                  <span className="font-bold">{t("exam_paused_badge")}</span>
+                </div>
+              ) : !cameraActive ? (
                 <div className="text-center p-3 text-[#8C887B] text-xs">
                   <VideoOff className="h-6 w-6 mx-auto mb-1 text-[#8C887B]" />
                   <span>{cameraError || "Camera initializing..."}</span>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
 

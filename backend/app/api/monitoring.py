@@ -116,6 +116,16 @@ def get_live_monitoring(
         if sess.status == "ACTIVE":
             remaining = max(0, int((deadline - now).total_seconds()))
             total_active += 1
+        elif sess.status == "CAMERA_PAUSED":
+            pause_event = (
+                db.query(ProctorEvent)
+                .filter(ProctorEvent.session_id == sess.id, ProctorEvent.event_type == "EXAM_CAMERA_PAUSED")
+                .order_by(ProctorEvent.id.desc())
+                .first()
+            )
+            pause_time = ensure_utc(pause_event.created_at) if pause_event else now
+            remaining = max(0, int((deadline - pause_time).total_seconds()))
+            total_active += 1
         else:
             remaining = 0
             total_completed += 1
@@ -148,7 +158,7 @@ def get_live_monitoring(
             total_suspicious += 1
 
         # Camera & Face detection telemetry
-        camera_active = True
+        camera_active = sess.status != "CAMERA_PAUSED"
         face_detected = True
         last_heartbeat = None
         latest_event_dict = None
@@ -165,8 +175,8 @@ def get_live_monitoring(
             last_heartbeat = latest.created_at
 
             # Check if camera was disconnected
-            cam_events = [e for e in events if e.event_type in ["WEBCAM_DISCONNECTED", "WEBCAM_CONNECTED"]]
-            if cam_events and cam_events[0].event_type == "WEBCAM_DISCONNECTED":
+            cam_events = [e for e in events if e.event_type in ["WEBCAM_DISCONNECTED", "WEBCAM_CONNECTED", "CAMERA_DISCONNECTED", "CAMERA_RECONNECTED", "EXAM_CAMERA_PAUSED", "EXAM_CAMERA_RESUMED"]]
+            if sess.status == "CAMERA_PAUSED" or (cam_events and cam_events[0].event_type in ["WEBCAM_DISCONNECTED", "CAMERA_DISCONNECTED", "EXAM_CAMERA_PAUSED"]):
                 camera_active = False
 
             # Check latest face event
@@ -375,7 +385,7 @@ async def websocket_candidate_monitoring(
         return
 
     session = db.query(ExamSession).filter(ExamSession.id == session_id).first()
-    if not session or session.student_id != user.id or session.status != "ACTIVE":
+    if not session or session.student_id != user.id or session.status not in ["ACTIVE", "CAMERA_PAUSED"]:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
@@ -390,6 +400,8 @@ async def websocket_candidate_monitoring(
         exam_id=exam_id,
         websocket=websocket
     )
+    if session.status == "CAMERA_PAUSED":
+        conn.camera_active = False
 
     try:
         while True:

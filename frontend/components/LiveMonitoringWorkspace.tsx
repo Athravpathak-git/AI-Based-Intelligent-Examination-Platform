@@ -125,9 +125,9 @@ function CandidateLiveVideoCard({
   const [connectionState, setConnectionState] = useState<
     "LIVE" | "CONNECTING" | "CAMERA_DISCONNECTED" | "CONNECTION_LOST" | "EXAM_ENDED"
   >(
-    session.status !== "ACTIVE"
+    session.status !== "ACTIVE" && session.status !== "CAMERA_PAUSED"
       ? "EXAM_ENDED"
-      : session.camera_active === false
+      : session.status === "CAMERA_PAUSED" || session.camera_active === false
       ? "CAMERA_DISCONNECTED"
       : "CONNECTING"
   );
@@ -159,7 +159,7 @@ function CandidateLiveVideoCard({
 
   // WebRTC Peer Connection negotiation and live video stream reception
   useEffect(() => {
-    if (session.status !== "ACTIVE") {
+    if (session.status !== "ACTIVE" && session.status !== "CAMERA_PAUSED") {
       setConnectionState("EXAM_ENDED");
       if (pcRef.current) {
         pcRef.current.close();
@@ -169,7 +169,7 @@ function CandidateLiveVideoCard({
       return;
     }
 
-    if (!effectiveCameraActive) {
+    if (session.status === "CAMERA_PAUSED" || !effectiveCameraActive) {
       setConnectionState("CAMERA_DISCONNECTED");
       return;
     }
@@ -332,7 +332,7 @@ function CandidateLiveVideoCard({
               </span>
             ) : connectionState === "CAMERA_DISCONNECTED" ? (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                ⚠ CAMERA OFF
+                ⚠ {session.status === "CAMERA_PAUSED" ? "PAUSED (CAMERA)" : "CAMERA OFF"}
               </span>
             ) : connectionState === "EXAM_ENDED" ? (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">
@@ -380,7 +380,9 @@ function CandidateLiveVideoCard({
               ) : connectionState === "CAMERA_DISCONNECTED" ? (
                 <div className="space-y-1.5 text-rose-400">
                   <VideoOff className="h-7 w-7 mx-auto opacity-80" />
-                  <span className="text-[11px] font-bold">Camera Disconnected</span>
+                  <span className="text-[11px] font-bold">
+                    {session.status === "CAMERA_PAUSED" ? "Camera Disconnected - Exam Paused" : "Camera Disconnected"}
+                  </span>
                 </div>
               ) : connectionState === "EXAM_ENDED" ? (
                 <div className="space-y-1.5 text-slate-500">

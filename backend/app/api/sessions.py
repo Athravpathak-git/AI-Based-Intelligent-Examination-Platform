@@ -22,16 +22,21 @@ from app.schemas.session import (
     ProctorEventResponse,
     ProctorEventActionResponse,
     SessionHeartbeatResponse,
-    ExamSubmissionResult
+    ExamSubmissionResult,
+    SessionPauseResponse,
+    SessionResumeResponse
 )
 from app.services.image_service import save_and_thumbnail_image
 from app.services.ocr_service import extract_text_from_image
+from app.services.monitoring_signaling import signaling_manager
 from app.services.session_service import (
     get_or_create_exam_session,
     save_session_answer,
     record_proctor_event,
     finalize_and_grade_session,
-    check_session_heartbeat
+    check_session_heartbeat,
+    pause_exam_session,
+    resume_exam_session
 )
 
 router = APIRouter(tags=["Exam Sessions"])
@@ -179,6 +184,44 @@ def api_get_session_proctor_events(
         .all()
     )
 
+@router.post("/sessions/{session_id}/pause-camera", response_model=SessionPauseResponse)
+async def api_pause_session_camera(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Pause an active exam session due to camera disconnection. Timer freezes on server side."""
+    res = pause_exam_session(db, session_id=session_id, student=current_user)
+    # Broadcast real-time camera paused state to examiners
+    try:
+        await signaling_manager.broadcast_candidate_status(
+            session_id=session_id,
+            status_type="CANDIDATE_CAMERA_UPDATE",
+            data={"session_id": session_id, "camera_active": False, "status": "CAMERA_PAUSED"}
+        )
+    except Exception:
+        pass
+    return SessionPauseResponse(**res)
+
+@router.post("/sessions/{session_id}/resume-camera", response_model=SessionResumeResponse)
+async def api_resume_session_camera(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Resume a camera-paused exam session. Candidate is not penalized for camera disconnect time."""
+    res = resume_exam_session(db, session_id=session_id, student=current_user)
+    # Broadcast real-time camera resumed state to examiners
+    try:
+        await signaling_manager.broadcast_candidate_status(
+            session_id=session_id,
+            status_type="CANDIDATE_CAMERA_UPDATE",
+            data={"session_id": session_id, "camera_active": True, "status": "ACTIVE"}
+        )
+    except Exception:
+        pass
+    return SessionResumeResponse(**res)
+
 @router.post("/sessions/{session_id}/submit", response_model=ExamSubmissionResult)
 def api_submit_exam_session(
     session_id: int,
@@ -211,7 +254,18 @@ async def websocket_session_heartbeat(websocket: WebSocket, session_id: int):
             exam = session.exam
             started_at = ensure_utc(session.started_at)
             deadline = min(started_at + timedelta(minutes=exam.duration_minutes), ensure_utc(exam.end_time))
-            remaining = max(0, int((deadline - now).total_seconds()))
+
+            if session.status == "CAMERA_PAUSED":
+                pause_event = (
+                    db.query(ProctorEvent)
+                    .filter(ProctorEvent.session_id == session.id, ProctorEvent.event_type == "EXAM_CAMERA_PAUSED")
+                    .order_by(ProctorEvent.id.desc())
+                    .first()
+                )
+                pause_time = ensure_utc(pause_event.created_at) if pause_event else now
+                remaining = max(0, int((deadline - pause_time).total_seconds()))
+            else:
+                remaining = max(0, int((deadline - now).total_seconds()))
 
             violation_count = (
                 db.query(ProctorEvent)
@@ -238,7 +292,7 @@ async def websocket_session_heartbeat(websocket: WebSocket, session_id: int):
                 "remaining_seconds": remaining,
                 "violation_count": violation_count,
                 "suspicion_score": session.suspicion_score or 0.0,
-                "auto_submitted": session.status != "ACTIVE",
+                "auto_submitted": session.status not in ["ACTIVE", "CAMERA_PAUSED"],
                 "result_id": result.id if result else None
             }
             await websocket.send_json(response)

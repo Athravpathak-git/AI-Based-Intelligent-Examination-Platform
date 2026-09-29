@@ -20,7 +20,9 @@ from app.schemas.session import (
     QuestionResultBreakdown,
     ExamSubmissionResult,
     ProctorEventActionResponse,
-    SessionHeartbeatResponse
+    SessionHeartbeatResponse,
+    SessionPauseResponse,
+    SessionResumeResponse
 )
 
 VIOLATION_EVENT_TYPES = {
@@ -125,13 +127,13 @@ def get_or_create_exam_session(db: Session, exam_id: int, student: User) -> Sess
                 detail="You must register for this examination before attempting to start a session."
             )
 
-    # 1. Look for an active session (to resume)
+    # 1. Look for an active or camera-paused session (to resume)
     active_session = (
         db.query(ExamSession)
         .filter(
             ExamSession.exam_id == exam_id,
             ExamSession.student_id == student.id,
-            ExamSession.status == "ACTIVE"
+            ExamSession.status.in_(["ACTIVE", "CAMERA_PAUSED"])
         )
         .order_by(ExamSession.id.desc())
         .first()
@@ -186,7 +188,18 @@ def get_or_create_exam_session(db: Session, exam_id: int, student: User) -> Sess
         deadline = min(deadline_by_duration, effective_end)
     else:
         deadline = min(deadline_by_duration, ensure_utc(exam.end_time))
-    remaining_seconds = max(0, int((deadline - now).total_seconds()))
+
+    if session.status == "CAMERA_PAUSED":
+        pause_event = (
+            db.query(ProctorEvent)
+            .filter(ProctorEvent.session_id == session.id, ProctorEvent.event_type == "EXAM_CAMERA_PAUSED")
+            .order_by(ProctorEvent.id.desc())
+            .first()
+        )
+        pause_time = ensure_utc(pause_event.created_at) if pause_event else now
+        remaining_seconds = max(0, int((deadline - pause_time).total_seconds()))
+    else:
+        remaining_seconds = max(0, int((deadline - now).total_seconds()))
 
     if remaining_seconds <= 0 and session.status == "ACTIVE":
         # Time expired: trigger auto-submit
@@ -811,6 +824,28 @@ def check_session_heartbeat(
     existing_result = db.query(Result).filter(Result.session_id == session_id).first()
 
     if session.status != "ACTIVE":
+        if session.status == "CAMERA_PAUSED":
+            pause_event = (
+                db.query(ProctorEvent)
+                .filter(ProctorEvent.session_id == session.id, ProctorEvent.event_type == "EXAM_CAMERA_PAUSED")
+                .order_by(ProctorEvent.id.desc())
+                .first()
+            )
+            pause_time = ensure_utc(pause_event.created_at) if pause_event else datetime.now(timezone.utc)
+            started_at = ensure_utc(session.started_at)
+            deadline = min(started_at + timedelta(minutes=session.exam.duration_minutes), ensure_utc(session.exam.end_time))
+            remaining = max(0, int((deadline - pause_time).total_seconds()))
+            return SessionHeartbeatResponse(
+                session_id=session.id,
+                status="CAMERA_PAUSED",
+                remaining_seconds=remaining,
+                tab_switch_count=violation_count,
+                auto_submitted=False,
+                result_id=None,
+                submission_reason=None,
+                suspicion_score=session.suspicion_score or 0.0
+            )
+
         sub_reason = "Maximum proctoring violations reached" if session.status == "SUBMITTED_VIOLATION" else (
             "Examination time expired" if session.status in ["TIME_EXPIRED", "EXPIRED"] else "Candidate manually submitted"
         )
@@ -856,3 +891,146 @@ def check_session_heartbeat(
         submission_reason=None,
         suspicion_score=session.suspicion_score or 0.0
     )
+
+
+def pause_exam_session(
+    db: Session,
+    session_id: int,
+    student: User
+) -> Dict[str, Any]:
+    """Pause an active exam session due to camera disconnection. Freezes timer and records proctor events."""
+    session = db.query(ExamSession).filter(ExamSession.id == session_id).first()
+    if not session or session.student_id != student.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    now = datetime.now(timezone.utc)
+
+    if session.status == "CAMERA_PAUSED":
+        pause_event = (
+            db.query(ProctorEvent)
+            .filter(ProctorEvent.session_id == session.id, ProctorEvent.event_type == "EXAM_CAMERA_PAUSED")
+            .order_by(ProctorEvent.id.desc())
+            .first()
+        )
+        pause_time = ensure_utc(pause_event.created_at) if pause_event else now
+        started_at = ensure_utc(session.started_at)
+        deadline = min(started_at + timedelta(minutes=session.exam.duration_minutes), ensure_utc(session.exam.end_time))
+        remaining = max(0, int((deadline - pause_time).total_seconds()))
+        return {
+            "session_id": session.id,
+            "status": "CAMERA_PAUSED",
+            "remaining_seconds": remaining,
+            "paused_at": pause_time,
+            "message": "Exam session is already paused."
+        }
+
+    if session.status != "ACTIVE":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot pause session in status '{session.status}'."
+        )
+
+    started_at = ensure_utc(session.started_at)
+    deadline = min(started_at + timedelta(minutes=session.exam.duration_minutes), ensure_utc(session.exam.end_time))
+    remaining = max(0, int((deadline - now).total_seconds()))
+
+    session.status = "CAMERA_PAUSED"
+
+    cam_disc_event = ProctorEvent(
+        session_id=session.id,
+        event_type="CAMERA_DISCONNECTED",
+        event_data={"paused_at": now.isoformat(), "remaining_seconds": remaining},
+        severity="MEDIUM"
+    )
+    exam_pause_event = ProctorEvent(
+        session_id=session.id,
+        event_type="EXAM_CAMERA_PAUSED",
+        event_data={"paused_at": now.isoformat(), "remaining_seconds": remaining},
+        severity="MEDIUM"
+    )
+    db.add(cam_disc_event)
+    db.add(exam_pause_event)
+    db.commit()
+    db.refresh(session)
+
+    return {
+        "session_id": session.id,
+        "status": "CAMERA_PAUSED",
+        "remaining_seconds": remaining,
+        "paused_at": now,
+        "message": "Exam session paused due to camera disconnection."
+    }
+
+
+def resume_exam_session(
+    db: Session,
+    session_id: int,
+    student: User
+) -> Dict[str, Any]:
+    """Resume a camera-paused exam session. Shifts started_at forward so disconnect time is not penalized."""
+    session = db.query(ExamSession).filter(ExamSession.id == session_id).first()
+    if not session or session.student_id != student.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    now = datetime.now(timezone.utc)
+
+    if session.status == "ACTIVE":
+        started_at = ensure_utc(session.started_at)
+        deadline = min(started_at + timedelta(minutes=session.exam.duration_minutes), ensure_utc(session.exam.end_time))
+        remaining = max(0, int((deadline - now).total_seconds()))
+        return {
+            "session_id": session.id,
+            "status": "ACTIVE",
+            "remaining_seconds": remaining,
+            "message": "Exam session is already active."
+        }
+
+    if session.status != "CAMERA_PAUSED":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot resume session in status '{session.status}'."
+        )
+
+    pause_event = (
+        db.query(ProctorEvent)
+        .filter(ProctorEvent.session_id == session.id, ProctorEvent.event_type == "EXAM_CAMERA_PAUSED")
+        .order_by(ProctorEvent.id.desc())
+        .first()
+    )
+
+    pause_duration = 0.0
+    if pause_event:
+        paused_at = ensure_utc(pause_event.created_at)
+        pause_duration = max(0.0, (now - paused_at).total_seconds())
+
+    old_started = ensure_utc(session.started_at)
+    session.started_at = old_started + timedelta(seconds=pause_duration)
+    session.status = "ACTIVE"
+
+    cam_rec_event = ProctorEvent(
+        session_id=session.id,
+        event_type="CAMERA_RECONNECTED",
+        event_data={"resumed_at": now.isoformat()},
+        severity="LOW"
+    )
+    exam_res_event = ProctorEvent(
+        session_id=session.id,
+        event_type="EXAM_CAMERA_RESUMED",
+        event_data={"resumed_at": now.isoformat(), "pause_duration_seconds": round(pause_duration, 2)},
+        severity="LOW"
+    )
+    db.add(cam_rec_event)
+    db.add(exam_res_event)
+    db.commit()
+    db.refresh(session)
+
+    started_at = ensure_utc(session.started_at)
+    deadline = min(started_at + timedelta(minutes=session.exam.duration_minutes), ensure_utc(session.exam.end_time))
+    remaining = max(0, int((deadline - now).total_seconds()))
+
+    return {
+        "session_id": session.id,
+        "status": "ACTIVE",
+        "remaining_seconds": remaining,
+        "message": "Exam session resumed successfully."
+    }
