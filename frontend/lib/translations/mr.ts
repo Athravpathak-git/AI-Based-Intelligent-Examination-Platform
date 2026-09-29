@@ -1001,4 +1001,8 @@ export const mr: Record<string, string> = {
   "start_exam_verified_btn": "पर्यवेक्षित परीक्षा सुरू करा",
   "exam_paused_badge": "परीक्षा थांबवली (कॅमेरा)",
   "status_paused": "थांबवले",
+  "telemetry_connected": "थेट टेलीमेट्री जोडली",
+  "telemetry_connecting": "टेलीमेट्री जोडत आहे...",
+  "telemetry_reconnecting": "टेलीमेट्री पुन्हा जोडत आहे...",
+  "telemetry_disconnected": "टेलीमेट्री डिस्कनेक्ट झाली",
 };

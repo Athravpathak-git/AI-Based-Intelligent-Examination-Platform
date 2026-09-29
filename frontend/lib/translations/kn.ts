@@ -1001,4 +1001,8 @@ export const kn: Record<string, string> = {
   "start_exam_verified_btn": "ಪರೀಕ್ಷೆ ಪ್ರಾರಂಭಿಸಿ",
   "exam_paused_badge": "ಪರೀಕ್ಷೆ ವಿರಾಮಗೊಳಿಸಲಾಗಿದೆ (ಕ್ಯಾಮೆರಾ)",
   "status_paused": "ವಿರಾಮಗೊಳಿಸಲಾಗಿದೆ",
+  "telemetry_connected": "ಲೈವ್ ಟೆಲಿಮೆಟ್ರಿ ಸಂಪರ್ಕಗೊಂಡಿದೆ",
+  "telemetry_connecting": "ಟೆಲಿಮೆಟ್ರಿ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ...",
+  "telemetry_reconnecting": "ಟೆಲಿಮೆಟ್ರಿ ಮರುಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ...",
+  "telemetry_disconnected": "ಟೆಲಿಮೆಟ್ರಿ ಸಂಪರ್ಕ ಕಡಿತಗೊಂಡಿದೆ",
 };

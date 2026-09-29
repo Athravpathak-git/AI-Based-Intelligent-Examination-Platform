@@ -1001,4 +1001,8 @@ export const ta: Record<string, string> = {
   "start_exam_verified_btn": "கண்காணிக்கப்படும் தேர்வைத் தொடங்கவும்",
   "exam_paused_badge": "தேர்வு இடைநிறுத்தப்பட்டது (கேமரா)",
   "status_paused": "இடைநிறுத்தப்பட்டது",
+  "telemetry_connected": "நேரலை டெலிமெட்ரி இணைக்கப்பட்டது",
+  "telemetry_connecting": "டெலிமெட்ரி இணைகிறது...",
+  "telemetry_reconnecting": "டெலிமெட்ரி மீண்டும் இணைகிறது...",
+  "telemetry_disconnected": "டெலிமெட்ரி துண்டிக்கப்பட்டது",
 };

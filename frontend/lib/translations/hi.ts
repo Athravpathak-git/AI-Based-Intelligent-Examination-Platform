@@ -1001,4 +1001,8 @@ export const hi: Record<string, string> = {
   "start_exam_verified_btn": "प्रॉक्टर्ड परीक्षा शुरू करें",
   "exam_paused_badge": "परीक्षा स्थगित (कैमरा)",
   "status_paused": "रोका गया",
+  "telemetry_connected": "लाइव टेलीमेट्री कनेक्टेड",
+  "telemetry_connecting": "टेलीमेट्री कनेक्ट हो रही है...",
+  "telemetry_reconnecting": "टेलीमेट्री पुनः कनेक्ट हो रही है...",
+  "telemetry_disconnected": "टेलीमेट्री डिस्कनेक्टेड",
 };

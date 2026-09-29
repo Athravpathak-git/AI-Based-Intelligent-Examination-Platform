@@ -122,15 +122,7 @@ function CandidateLiveVideoCard({
   t: (key: string, params?: Record<string, string | number>) => string;
 }) {
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [connectionState, setConnectionState] = useState<
-    "LIVE" | "CONNECTING" | "CAMERA_DISCONNECTED" | "CONNECTION_LOST" | "EXAM_ENDED"
-  >(
-    session.status !== "ACTIVE" && session.status !== "CAMERA_PAUSED"
-      ? "EXAM_ENDED"
-      : session.status === "CAMERA_PAUSED" || session.camera_active === false
-      ? "CAMERA_DISCONNECTED"
-      : "CONNECTING"
-  );
+  const [iceState, setIceState] = useState<"LIVE" | "CONNECTING" | "CONNECTION_LOST">("CONNECTING");
   const [isEnlarged, setIsEnlarged] = useState<boolean>(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -147,6 +139,16 @@ function CandidateLiveVideoCard({
   const effectiveTabSwitches =
     liveProctor?.tab_switch_count !== undefined ? liveProctor.tab_switch_count : session.tab_switch_count;
 
+  const isExamEnded = session.status !== "ACTIVE" && session.status !== "CAMERA_PAUSED";
+  const isCameraPausedOrOff = session.status === "CAMERA_PAUSED" || effectiveCameraActive === false;
+
+  const connectionState: "LIVE" | "CONNECTING" | "CAMERA_DISCONNECTED" | "CONNECTION_LOST" | "EXAM_ENDED" =
+    isExamEnded
+      ? "EXAM_ENDED"
+      : isCameraPausedOrOff
+      ? "CAMERA_DISCONNECTED"
+      : iceState;
+
   // Sync stream to video elements whenever stream or enlarged state changes
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -159,8 +161,7 @@ function CandidateLiveVideoCard({
 
   // WebRTC Peer Connection negotiation and live video stream reception
   useEffect(() => {
-    if (session.status !== "ACTIVE" && session.status !== "CAMERA_PAUSED") {
-      setConnectionState("EXAM_ENDED");
+    if (isExamEnded) {
       if (pcRef.current) {
         pcRef.current.close();
         pcRef.current = null;
@@ -169,13 +170,8 @@ function CandidateLiveVideoCard({
       return;
     }
 
-    if (session.status === "CAMERA_PAUSED" || !effectiveCameraActive) {
-      setConnectionState("CAMERA_DISCONNECTED");
-      return;
-    }
-
     if (!signalingWs || !isSignalingReady) {
-      setConnectionState("CONNECTING");
+      setIceState("CONNECTING");
       return;
     }
 
@@ -202,7 +198,7 @@ function CandidateLiveVideoCard({
             if (!isSubscribed) return;
             const remoteStream = event.streams[0];
             setStream(remoteStream);
-            setConnectionState("LIVE");
+            setIceState("LIVE");
           };
 
           pc.onicecandidate = (event) => {
@@ -220,9 +216,9 @@ function CandidateLiveVideoCard({
           pc.oniceconnectionstatechange = () => {
             if (!isSubscribed) return;
             if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
-              setConnectionState("CONNECTION_LOST");
+              setIceState("CONNECTION_LOST");
             } else if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
-              setConnectionState("LIVE");
+              setIceState("LIVE");
             }
           };
 
@@ -246,21 +242,23 @@ function CandidateLiveVideoCard({
         }
       } catch (err) {
         console.warn(`WebRTC negotiation error for session ${session.session_id}:`, err);
-        setConnectionState("CONNECTION_LOST");
+        setIceState("CONNECTION_LOST");
       }
     };
 
     registerCardListener(session.session_id, handleSignalingMessage);
 
-    // Request stream from candidate
-    setConnectionState("CONNECTING");
-    if (signalingWs.readyState === WebSocket.OPEN) {
-      signalingWs.send(
-        JSON.stringify({
-          type: "request_stream",
-          session_id: session.session_id,
-        })
-      );
+    // Request stream from candidate if not already established
+    if (!pcRef.current || pcRef.current.iceConnectionState !== "connected") {
+      setIceState("CONNECTING");
+      if (signalingWs.readyState === WebSocket.OPEN) {
+        signalingWs.send(
+          JSON.stringify({
+            type: "request_stream",
+            session_id: session.session_id,
+          })
+        );
+      }
     }
 
     return () => {
@@ -274,10 +272,9 @@ function CandidateLiveVideoCard({
     };
   }, [
     session.session_id,
-    session.status,
+    isExamEnded,
     signalingWs,
     isSignalingReady,
-    effectiveCameraActive,
     registerCardListener,
     unregisterCardListener,
   ]);
@@ -653,7 +650,7 @@ export default function LiveMonitoringWorkspace({ role }: { role: "EXAMINER" | "
   const [selectedExamId, setSelectedExamId] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(10);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(30);
 
   // Inspection Modal state
   const [inspectedSession, setInspectedSession] = useState<LiveCandidateSessionItem | null>(null);
@@ -664,11 +661,18 @@ export default function LiveMonitoringWorkspace({ role }: { role: "EXAMINER" | "
   // Countdown timers local state (updates tick every second)
   const [localSecondsMap, setLocalSecondsMap] = useState<Record<number, number>>({});
 
-  // WebRTC Examiner Signaling State
+  // WebRTC Examiner Signaling State & Status
   const [signalingWs, setSignalingWs] = useState<WebSocket | null>(null);
   const [isSignalingReady, setIsSignalingReady] = useState<boolean>(false);
+  const [telemetryState, setTelemetryState] = useState<"CONNECTING" | "CONNECTED" | "RECONNECTING" | "DISCONNECTED">("CONNECTING");
   const [onlineSessionIds, setOnlineSessionIds] = useState<Set<number>>(new Set());
   const [liveProctorMap, setLiveProctorMap] = useState<Record<number, LiveProctorTelemetry>>({});
+
+  // Summary ref for non-stale access without re-triggering effects
+  const summaryRef = useRef<LiveMonitoringSummary | null>(null);
+  useEffect(() => {
+    summaryRef.current = summary;
+  }, [summary]);
 
   // Registry for candidate card signaling message listeners: session_id -> callback
   const cardMessageListenersRef = useRef<Map<number, (data: any) => void>>(new Map());
@@ -681,120 +685,7 @@ export default function LiveMonitoringWorkspace({ role }: { role: "EXAMINER" | "
     cardMessageListenersRef.current.delete(sessionId);
   }, []);
 
-  // 1. Establish Examiner WebRTC Signaling Channel
-  useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!token) return;
-
-    let ws: WebSocket | null = null;
-    let pingTimer: NodeJS.Timeout | null = null;
-    let isMounted = true;
-
-    try {
-      const wsUrl = getWebSocketUrl(`/monitoring/ws/examiner?token=${encodeURIComponent(token)}`);
-      ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        if (!isMounted) return;
-        setSignalingWs(ws);
-        setIsSignalingReady(true);
-        // Ping every 15s to keep WebSocket connection open
-        pingTimer = setInterval(() => {
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "ping" }));
-          }
-        }, 15000);
-      };
-
-      ws.onmessage = (evt) => {
-        try {
-          const data = JSON.parse(evt.data);
-
-          if (data.type === "INITIAL_ONLINE_CANDIDATES") {
-            const sids = new Set<number>((data.candidates || []).map((c: any) => c.session_id));
-            setOnlineSessionIds(sids);
-          } else if (data.type === "CANDIDATE_ONLINE") {
-            setOnlineSessionIds((prev) => {
-              const next = new Set(prev);
-              next.add(data.session_id);
-              return next;
-            });
-            // Trigger background telemetry refresh so card appears in list
-            fetchData(false);
-          } else if (data.type === "CANDIDATE_OFFLINE") {
-            setOnlineSessionIds((prev) => {
-              const next = new Set(prev);
-              next.delete(data.session_id);
-              return next;
-            });
-          } else if (data.type === "CANDIDATE_CAMERA_UPDATE") {
-            setLiveProctorMap((prev) => ({
-              ...prev,
-              [data.session_id]: {
-                ...prev[data.session_id],
-                camera_active: data.data?.camera_active,
-              },
-            }));
-          } else if (data.type === "CANDIDATE_PROCTOR_UPDATE") {
-            setLiveProctorMap((prev) => ({
-              ...prev,
-              [data.session_id]: {
-                ...prev[data.session_id],
-                face_detected: data.data?.face_detected,
-                multiple_faces: data.data?.multiple_faces,
-                tab_switch_count: data.data?.tab_switch_count,
-              },
-            }));
-          } else if (data.type === "offer" || data.type === "ice_candidate") {
-            const listener = cardMessageListenersRef.current.get(data.session_id);
-            if (listener) {
-              listener(data);
-            }
-          }
-        } catch (e) {
-          console.warn("Signaling dispatch error:", e);
-        }
-      };
-
-      ws.onerror = (e) => {
-        console.warn("Examiner signaling connection error:", e);
-      };
-
-      ws.onclose = () => {
-        if (isMounted) {
-          setIsSignalingReady(false);
-          setSignalingWs(null);
-        }
-      };
-    } catch (err) {
-      console.warn("Failed to create examiner signaling WebSocket:", err);
-    }
-
-    return () => {
-      isMounted = false;
-      if (pingTimer) clearInterval(pingTimer);
-      if (ws) {
-        ws.close();
-      }
-      setSignalingWs(null);
-      setIsSignalingReady(false);
-    };
-  }, []);
-
-  // 2. Fetch Exams for dropdown filter
-  useEffect(() => {
-    const fetchExams = async () => {
-      try {
-        const res = await api.get<any[]>("/exams");
-        setExams(res.data.map((e) => ({ id: e.id, name: e.name, subject: e.subject })));
-      } catch (err) {
-        console.error("Failed to fetch exams:", err);
-      }
-    };
-    fetchExams();
-  }, []);
-
-  // 3. Fetch Live Monitoring Data
+  // Fetch Live Monitoring Data
   const fetchData = useCallback(
     async (showRefreshingSpinner = false) => {
       if (showRefreshingSpinner) setIsRefreshing(true);
@@ -824,6 +715,152 @@ export default function LiveMonitoringWorkspace({ role }: { role: "EXAMINER" | "
     },
     [selectedExamId, statusFilter, searchQuery]
   );
+
+  const fetchDataRef = useRef(fetchData);
+  useEffect(() => {
+    fetchDataRef.current = fetchData;
+  }, [fetchData]);
+
+  // 1. Establish Examiner WebRTC Signaling Channel with Auto-Reconnect
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) {
+      setTelemetryState("DISCONNECTED");
+      return;
+    }
+
+    let ws: WebSocket | null = null;
+    let pingTimer: NodeJS.Timeout | null = null;
+    let reconnectTimer: NodeJS.Timeout | null = null;
+    let retryDelay = 2000;
+    let isMounted = true;
+
+    function connect() {
+      if (!isMounted || !token) return;
+      try {
+        setTelemetryState((prev) => (prev === "CONNECTED" ? "RECONNECTING" : prev));
+        const wsUrl = getWebSocketUrl(`/monitoring/ws/examiner?token=${encodeURIComponent(token)}`);
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          if (!isMounted) return;
+          retryDelay = 2000;
+          setSignalingWs(ws);
+          setIsSignalingReady(true);
+          setTelemetryState("CONNECTED");
+          // Ping every 15s to keep WebSocket connection open
+          if (pingTimer) clearInterval(pingTimer);
+          pingTimer = setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: "ping" }));
+            }
+          }, 15000);
+        };
+
+        ws.onmessage = (evt) => {
+          try {
+            const data = JSON.parse(evt.data);
+
+            if (data.type === "INITIAL_ONLINE_CANDIDATES") {
+              const sids = new Set<number>((data.candidates || []).map((c: any) => c.session_id));
+              setOnlineSessionIds(sids);
+            } else if (data.type === "CANDIDATE_ONLINE") {
+              setOnlineSessionIds((prev) => {
+                const next = new Set(prev);
+                next.add(data.session_id);
+                return next;
+              });
+              // Only trigger database fetch if session is not already present in current summary
+              const exists = summaryRef.current?.sessions.some((s) => s.session_id === data.session_id);
+              if (!exists) {
+                fetchDataRef.current(false);
+              }
+            } else if (data.type === "CANDIDATE_OFFLINE") {
+              setOnlineSessionIds((prev) => {
+                const next = new Set(prev);
+                next.delete(data.session_id);
+                return next;
+              });
+            } else if (data.type === "CANDIDATE_CAMERA_UPDATE") {
+              setLiveProctorMap((prev) => ({
+                ...prev,
+                [data.session_id]: {
+                  ...prev[data.session_id],
+                  camera_active: data.data?.camera_active,
+                },
+              }));
+            } else if (data.type === "CANDIDATE_PROCTOR_UPDATE") {
+              setLiveProctorMap((prev) => ({
+                ...prev,
+                [data.session_id]: {
+                  ...prev[data.session_id],
+                  face_detected: data.data?.face_detected,
+                  multiple_faces: data.data?.multiple_faces,
+                  tab_switch_count: data.data?.tab_switch_count,
+                },
+              }));
+            } else if (data.type === "offer" || data.type === "ice_candidate") {
+              const listener = cardMessageListenersRef.current.get(data.session_id);
+              if (listener) {
+                listener(data);
+              }
+            }
+          } catch (e) {
+            console.warn("Signaling dispatch error:", e);
+          }
+        };
+
+        ws.onerror = (e) => {
+          console.warn("Examiner signaling connection error:", e);
+        };
+
+        ws.onclose = () => {
+          if (!isMounted) return;
+          setIsSignalingReady(false);
+          setSignalingWs(null);
+          setTelemetryState("RECONNECTING");
+          if (pingTimer) clearInterval(pingTimer);
+          // Exponential backoff reconnect
+          reconnectTimer = setTimeout(() => {
+            if (isMounted) {
+              connect();
+            }
+          }, retryDelay);
+          retryDelay = Math.min(retryDelay * 1.5, 15000);
+        };
+      } catch (err) {
+        console.warn("Failed to create examiner signaling WebSocket:", err);
+        setTelemetryState("DISCONNECTED");
+      }
+    }
+
+    connect();
+
+    return () => {
+      isMounted = false;
+      if (pingTimer) clearInterval(pingTimer);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (ws) {
+        ws.close();
+      }
+      setSignalingWs(null);
+      setIsSignalingReady(false);
+      setTelemetryState("DISCONNECTED");
+    };
+  }, []);
+
+  // 2. Fetch Exams for dropdown filter
+  useEffect(() => {
+    const fetchExams = async () => {
+      try {
+        const res = await api.get<any[]>("/exams");
+        setExams(res.data.map((e) => ({ id: e.id, name: e.name, subject: e.subject })));
+      } catch (err) {
+        console.error("Failed to fetch exams:", err);
+      }
+    };
+    fetchExams();
+  }, []);
 
   // Initial and param change fetch
   useEffect(() => {
@@ -895,7 +932,7 @@ export default function LiveMonitoringWorkspace({ role }: { role: "EXAMINER" | "
               <Eye className="h-6 w-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-bold text-white tracking-tight">
                   {t("live_monitoring")}
                 </h1>
@@ -903,6 +940,27 @@ export default function LiveMonitoringWorkspace({ role }: { role: "EXAMINER" | "
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   WebRTC Live
                 </span>
+                {telemetryState === "CONNECTED" ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                    {t("telemetry_connected")}
+                  </span>
+                ) : telemetryState === "RECONNECTING" ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1 animate-pulse">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                    {t("telemetry_reconnecting")}
+                  </span>
+                ) : telemetryState === "CONNECTING" ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-400 border border-slate-500/20 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse" />
+                    {t("telemetry_connecting")}
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+                    {t("telemetry_disconnected")}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
                 {t("monitoring_subtitle")}

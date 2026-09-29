@@ -1001,4 +1001,8 @@ export const te: Record<string, string> = {
   "start_exam_verified_btn": "పర్యవేక్షిత పరీక్షను ప్రారంభించండి",
   "exam_paused_badge": "పరీక్ష నిలిపివేయబడింది (కెమెరా)",
   "status_paused": "నిలిపివేయబడింది",
+  "telemetry_connected": "లైవ్ టెలిమెట్రీ కనెక్ట్ చేయబడింది",
+  "telemetry_connecting": "టెలిమెట్రీ కనెక్ట్ అవుతోంది...",
+  "telemetry_reconnecting": "టెలిమెట్రీ మళ్లీ కనెక్ట్ అవుతోంది...",
+  "telemetry_disconnected": "టెలిమెట్రీ డిస్‌కనెక్ట్ చేయబడింది",
 };

@@ -1001,4 +1001,8 @@ export const ml: Record<string, string> = {
   "start_exam_verified_btn": "പരീക്ഷ ആരംഭിക്കുക",
   "exam_paused_badge": "പരീക്ഷ താൽക്കാലികമായി നിർത്തി (ക്യാമറ)",
   "status_paused": "താൽക്കാലികമായി നിർത്തി",
+  "telemetry_connected": "തത്സമയ ടെലിമെട്രി ബന്ധിപ്പിച്ചു",
+  "telemetry_connecting": "ടെലിമെട്രി ബന്ധിപ്പിക്കുന്നു...",
+  "telemetry_reconnecting": "ടെലിമെട്രി വീണ്ടും ബന്ധിപ്പിക്കുന്നു...",
+  "telemetry_disconnected": "ടെലിമെട്രി വിച്ഛേദിക്കപ്പെട്ടു",
 };

@@ -86,6 +86,7 @@ export default function ExamAttemptPage() {
   // Webcam & Verification State
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const preflightVideoRef = useRef<HTMLVideoElement | null>(null);
+  const detectorVideoRef = useRef<HTMLVideoElement | null>(null);
   const [cameraActive, setCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
@@ -121,7 +122,14 @@ export default function ExamAttemptPage() {
   // Network Offline State & Proctor Warning Toast
   const [isNetworkOffline, setIsNetworkOffline] = useState<boolean>(false);
   const [faceWarningToast, setFaceWarningToast] = useState<string | null>(null);
+
+  // Edge-triggered face proctoring state machine refs
+  const currentFaceStateRef = useRef<"NORMAL" | "ABSENT" | "MULTIPLE">("NORMAL");
   const faceAbsentStartRef = useRef<number | null>(null);
+  const faceAbsentLoggedRef = useRef<boolean>(false);
+  const multipleFacesLoggedRef = useRef<boolean>(false);
+  const lastTelemetrySentRef = useRef<number>(0);
+  const lastTelemetryPayloadRef = useRef<string>("");
 
   // WebRTC Live Monitoring Refs (for secure examiner surveillance)
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -133,6 +141,33 @@ export default function ExamAttemptPage() {
   const lastViolationTimeRef = useRef<number>(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Throttled compact telemetry transmission to examiner live monitoring
+  const sendThrottledTelemetry = useCallback(
+    (payload: { face_detected: boolean; multiple_faces: boolean }, forceImmediate: boolean = false) => {
+      if (!signalingWsRef.current || signalingWsRef.current.readyState !== WebSocket.OPEN) return;
+
+      const payloadStr = JSON.stringify(payload);
+      const now = Date.now();
+      const timeSinceLast = now - lastTelemetrySentRef.current;
+
+      if (forceImmediate || payloadStr !== lastTelemetryPayloadRef.current || timeSinceLast >= 4000) {
+        lastTelemetrySentRef.current = now;
+        lastTelemetryPayloadRef.current = payloadStr;
+        try {
+          signalingWsRef.current.send(
+            JSON.stringify({
+              type: "proctor_status",
+              face_detected: payload.face_detected,
+              multiple_faces: payload.multiple_faces,
+              tab_switch_count: tabWarnings,
+            })
+          );
+        } catch (e) {}
+      }
+    },
+    [tabWarnings]
+  );
 
   // 1. Initialize Exam Session from Server
   useEffect(() => {
@@ -251,12 +286,17 @@ export default function ExamAttemptPage() {
         const stream = localStreamRef.current;
         setupTrackListeners(stream);
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+        if (detectorVideoRef.current && detectorVideoRef.current.srcObject !== stream) {
+          detectorVideoRef.current.srcObject = stream;
+          detectorVideoRef.current.play().catch(() => {});
         }
-        if (preflightVideoRef.current) {
+        if (preflightVideoRef.current && preflightVideoRef.current.srcObject !== stream) {
           preflightVideoRef.current.srcObject = stream;
           preflightVideoRef.current.play().catch(() => {});
+        }
+        if (videoRef.current && videoRef.current.srcObject !== stream) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => {});
         }
 
         setCameraActive(true);
@@ -284,6 +324,25 @@ export default function ExamAttemptPage() {
       isCancelled = true;
     };
   }, [session, setupTrackListeners]);
+
+  // Continuous MediaStream synchronization across all video elements on state changes
+  useEffect(() => {
+    const stream = localStreamRef.current;
+    if (!stream || !cameraActive) return;
+
+    if (detectorVideoRef.current && detectorVideoRef.current.srcObject !== stream) {
+      detectorVideoRef.current.srcObject = stream;
+      detectorVideoRef.current.play().catch(() => {});
+    }
+    if (preflightVideoRef.current && preflightVideoRef.current.srcObject !== stream) {
+      preflightVideoRef.current.srcObject = stream;
+      preflightVideoRef.current.play().catch(() => {});
+    }
+    if (videoRef.current && videoRef.current.srcObject !== stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [cameraActive, hasEnteredFullscreen]);
 
   // Pre-Exam Environment Verification Checks (Network, API, WebSocket)
   useEffect(() => {
@@ -378,6 +437,10 @@ export default function ExamAttemptPage() {
       });
 
       localStreamRef.current = stream;
+      if (detectorVideoRef.current) {
+        detectorVideoRef.current.srcObject = stream;
+        await detectorVideoRef.current.play().catch(() => {});
+      }
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play().catch(() => {});
@@ -395,8 +458,9 @@ export default function ExamAttemptPage() {
       });
 
       // 2. Re-verify single face
-      if (detectorRef.current && videoRef.current) {
-        const faces = await detectorRef.current.estimateFaces(videoRef.current, { flipHorizontal: false });
+      const targetVideo = detectorVideoRef.current || videoRef.current;
+      if (detectorRef.current && targetVideo) {
+        const faces = await detectorRef.current.estimateFaces(targetVideo, { flipHorizontal: false });
         if (!faces || faces.length === 0) {
           setReverifyError(t("face_none_detected_warning"));
           setIsReverifyingCamera(false);
@@ -458,8 +522,14 @@ export default function ExamAttemptPage() {
             const examinerId = data.examiner_user_id;
             if (!examinerId) return;
 
-            // Close any existing connection to this examiner
+            // Check if existing peer connection to this examiner is already healthy
             const existingPc = peerConnectionsRef.current.get(examinerId);
+            if (
+              existingPc &&
+              (existingPc.connectionState === "connected" || existingPc.iceConnectionState === "connected")
+            ) {
+              return;
+            }
             if (existingPc) {
               existingPc.close();
             }
@@ -797,7 +867,7 @@ export default function ExamAttemptPage() {
     };
   }, [hasEnteredFullscreen, logSecurityViolation]);
 
-  // 5b. Load TensorFlow MediaPipe Face Detector
+  // 5b. Load TensorFlow MediaPipe Face Detector (Configured with maxFaces: 10)
   useEffect(() => {
     let isDisposed = false;
     const initDetector = async () => {
@@ -809,6 +879,7 @@ export default function ExamAttemptPage() {
           const det = await faceDetection.createDetector(model, {
             runtime: "tfjs",
             modelType: "short",
+            maxFaces: 10,
           });
           if (!isDisposed) {
             detectorRef.current = det;
@@ -842,30 +913,36 @@ export default function ExamAttemptPage() {
     }));
 
     timer = setInterval(async () => {
-      if (!isMounted || !preflightVideoRef.current || !detectorRef.current) return;
-      const video = preflightVideoRef.current;
-      if (video.readyState < 2) return;
+      if (!isMounted || !detectorRef.current) return;
+      const video = detectorVideoRef.current || preflightVideoRef.current;
+      if (!video || video.readyState < 2) {
+        if (video && video.paused) {
+          video.play().catch(() => {});
+        }
+        return;
+      }
 
       try {
         const faces = await detectorRef.current.estimateFaces(video, { flipHorizontal: false });
         if (!isMounted) return;
 
-        if (!faces || faces.length === 0) {
+        const count = faces ? faces.length : 0;
+        if (count === 0) {
           setVerificationStatus((prev) => ({
             ...prev,
             faceDetection: "FAILED",
             facesCount: 0,
             faceMessage: t("face_none_detected_warning"),
           }));
-        } else if (faces.length > 1) {
+        } else if (count > 1) {
           setVerificationStatus((prev) => ({
             ...prev,
             faceDetection: "FAILED",
-            facesCount: faces.length,
+            facesCount: count,
             faceMessage: t("face_multiple_detected_warning"),
           }));
         } else {
-          // Exactly 1 face detected -> Establish baseline
+          // Exactly 1 face detected -> Establish baseline reference
           primaryFaceBaselineRef.current = faces[0];
           setVerificationStatus((prev) => ({
             ...prev,
@@ -877,7 +954,7 @@ export default function ExamAttemptPage() {
       } catch (e) {
         // Retry next tick
       }
-    }, 1200);
+    }, 600);
 
     return () => {
       isMounted = false;
@@ -885,7 +962,7 @@ export default function ExamAttemptPage() {
     };
   }, [cameraActive, hasEnteredFullscreen, t]);
 
-  // 5d. Real-time In-Exam Face & Gaze Detection
+  // 5d. Real-Time In-Exam Face & Gaze Detection (Continuous Edge-Triggered State Machine)
   useEffect(() => {
     if (!cameraActive || !session || !hasEnteredFullscreen || isCameraPaused) return;
 
@@ -893,18 +970,18 @@ export default function ExamAttemptPage() {
     let isCancelled = false;
 
     checkTimer = setInterval(async () => {
-      if (
-        isCancelled ||
-        !videoRef.current ||
-        !sessionActiveRef.current ||
-        !detectorRef.current ||
-        videoRef.current.readyState < 2
-      ) {
+      if (isCancelled || !sessionActiveRef.current || !detectorRef.current) return;
+
+      const video = detectorVideoRef.current || videoRef.current;
+      if (!video || video.readyState < 2) {
+        if (video && video.paused) {
+          video.play().catch(() => {});
+        }
         return;
       }
 
       // Check if video tracks are muted or ended
-      const stream = videoRef.current.srcObject as MediaStream | null;
+      const stream = (video.srcObject || localStreamRef.current) as MediaStream | null;
       const videoTrack = stream?.getVideoTracks()[0];
       if (!videoTrack || videoTrack.readyState === "ended" || videoTrack.muted) {
         handleCameraDisconnected("track_inactive");
@@ -912,42 +989,70 @@ export default function ExamAttemptPage() {
       }
 
       try {
-        const faces = await detectorRef.current.estimateFaces(videoRef.current, { flipHorizontal: false });
+        const faces = await detectorRef.current.estimateFaces(video, { flipHorizontal: false });
         if (isCancelled) return;
         const now = Date.now();
+        const faceCount = faces ? faces.length : 0;
 
-        if (!faces || faces.length === 0) {
-          if (!faceAbsentStartRef.current) {
+        if (faceCount === 0) {
+          // 0 Faces Detected: Face Absence State
+          if (currentFaceStateRef.current !== "ABSENT") {
+            currentFaceStateRef.current = "ABSENT";
             faceAbsentStartRef.current = now;
+            faceAbsentLoggedRef.current = false;
+            // Immediate edge transition telemetry: 1 -> 0
+            sendThrottledTelemetry({ face_detected: false, multiple_faces: false }, true);
           }
-          const elapsed = now - faceAbsentStartRef.current;
-          if (elapsed >= 15000) {
+
+          const elapsed = now - (faceAbsentStartRef.current || now);
+          if (elapsed >= 5000) {
             setFaceWarningToast(t("face_absence_warning_strong"));
-            logSecurityViolation("FACE_ABSENT");
-          } else if (elapsed >= 5000) {
-            setFaceWarningToast(t("face_absence_warning_strong"));
-            if (signalingWsRef.current?.readyState === WebSocket.OPEN) {
-              signalingWsRef.current.send(
-                JSON.stringify({
-                  type: "proctor_status",
-                  face_detected: false,
-                  multiple_faces: false,
-                  tab_switch_count: tabWarnings,
-                })
-              );
+            if (!faceAbsentLoggedRef.current) {
+              faceAbsentLoggedRef.current = true;
+              logSecurityViolation("FACE_ABSENT");
             }
+            sendThrottledTelemetry({ face_detected: false, multiple_faces: false }, false);
+          } else if (elapsed >= 2000) {
+            // 2–5 sec: clear warning
+            setFaceWarningToast(t("face_absence_warning_strong"));
           } else {
+            // 0–2 sec: subtle warning
             setFaceWarningToast(t("face_absence_warning_mild"));
           }
-        } else if (faces.length > 1) {
+        } else if (faceCount >= 2) {
+          // 2+ Faces Detected: Multiple Faces State
           faceAbsentStartRef.current = null;
-          setFaceWarningToast(t("face_multiple_detected_warning"));
-          logSecurityViolation("MULTIPLE_FACES_DETECTED");
+          faceAbsentLoggedRef.current = false;
+
+          if (currentFaceStateRef.current !== "MULTIPLE") {
+            currentFaceStateRef.current = "MULTIPLE";
+            multipleFacesLoggedRef.current = true;
+            setFaceWarningToast(t("face_multiple_detected_warning"));
+            // Immediate edge transition violation & telemetry: 1 -> 2+
+            logSecurityViolation("MULTIPLE_FACES_DETECTED");
+            sendThrottledTelemetry({ face_detected: true, multiple_faces: true }, true);
+          } else {
+            setFaceWarningToast(t("face_multiple_detected_warning"));
+            sendThrottledTelemetry({ face_detected: true, multiple_faces: true }, false);
+          }
         } else {
-          // Exactly 1 face
+          // Exactly 1 Face Detected: Normal State
+          const previousState = currentFaceStateRef.current;
+          currentFaceStateRef.current = "NORMAL";
           faceAbsentStartRef.current = null;
+          faceAbsentLoggedRef.current = false;
+          multipleFacesLoggedRef.current = false;
           setFaceWarningToast(null);
 
+          if (previousState !== "NORMAL") {
+            // Immediate edge transition telemetry: 0 -> 1 or 2+ -> 1
+            sendThrottledTelemetry({ face_detected: true, multiple_faces: false }, true);
+          } else {
+            // Controlled heartbeat telemetry
+            sendThrottledTelemetry({ face_detected: true, multiple_faces: false }, false);
+          }
+
+          // Off-screen gaze detection for single face
           const face = faces[0];
           if (face.keypoints && face.keypoints.length >= 6) {
             const nose = face.keypoints.find((k: any) => k.name === "noseTip");
@@ -963,13 +1068,13 @@ export default function ExamAttemptPage() {
           }
         }
       } catch (e) {}
-    }, 1500);
+    }, 600);
 
     return () => {
       isCancelled = true;
       if (checkTimer) clearInterval(checkTimer);
     };
-  }, [cameraActive, session, hasEnteredFullscreen, isCameraPaused, handleCameraDisconnected, logSecurityViolation, t, tabWarnings]);
+  }, [cameraActive, session, hasEnteredFullscreen, isCameraPaused, handleCameraDisconnected, logSecurityViolation, sendThrottledTelemetry, t]);
 
   // 5c. WebSocket Bi-Directional Heartbeat Connection (/ws/sessions/{id}/heartbeat)
   useEffect(() => {
@@ -1513,6 +1618,15 @@ export default function ExamAttemptPage() {
 
     return (
       <div className="min-h-screen bg-[#141414] text-white flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        {/* Continuous background video for AI face detector */}
+        <video
+          ref={detectorVideoRef}
+          autoPlay
+          playsInline
+          muted
+          className="fixed opacity-0 pointer-events-none -z-50 w-64 h-48"
+          style={{ position: "fixed", top: -9999, left: -9999 }}
+        />
         <div className="max-w-4xl w-full bg-[#202020] border border-[#333333] rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-[#2F2F2F]">
@@ -1737,6 +1851,15 @@ export default function ExamAttemptPage() {
   // 11. Main Proctored Examination Workspace
   return (
     <div className="min-h-screen bg-[#141414] text-[#F4F1E8] flex flex-col select-none">
+      {/* Continuous background video for AI face detector */}
+      <video
+        ref={detectorVideoRef}
+        autoPlay
+        playsInline
+        muted
+        className="fixed opacity-0 pointer-events-none -z-50 w-64 h-48"
+        style={{ position: "fixed", top: -9999, left: -9999 }}
+      />
       {/* Top Authoritative Status Bar */}
       <header className="bg-[#181818]/95 backdrop-blur-md border-b border-[#262626] px-6 py-3 sticky top-0 z-30 flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-4">

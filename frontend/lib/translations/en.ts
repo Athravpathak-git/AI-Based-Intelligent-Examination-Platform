@@ -1001,4 +1001,8 @@ export const en: Record<string, string> = {
   "start_exam_verified_btn": "Start Proctored Examination",
   "exam_paused_badge": "Exam Paused (Camera)",
   "status_paused": "Paused",
+  "telemetry_connected": "Live Telemetry Connected",
+  "telemetry_connecting": "Connecting Telemetry...",
+  "telemetry_reconnecting": "Reconnecting Telemetry...",
+  "telemetry_disconnected": "Telemetry Disconnected",
 };
